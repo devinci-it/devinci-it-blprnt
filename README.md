@@ -1,5 +1,7 @@
 # Blprnt
 
+![blprnt-logo](resources/logo-l.svg)
+
 Blprnt is a minimal, extensible PHP micro-framework 
 
 ## Philosophy
