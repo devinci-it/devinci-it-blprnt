@@ -103,6 +103,7 @@ class BlprntPlugin implements PluginInterface, EventSubscriberInterface
         $projectRoot = dirname($composer->getConfig()->get('vendor-dir'));
         $packageRoot = Installer::packageRootFrom(__DIR__);
 
+        
         Installer::publishForProject($projectRoot, $packageRoot, $io);
     }
 

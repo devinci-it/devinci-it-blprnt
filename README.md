@@ -1,6 +1,6 @@
 # Blprnt
 
-Blprnt is a minimal, extensible PHP micro-framework by DevinciIT.
+Blprnt is a minimal, extensible PHP micro-framework 
 
 ## Philosophy
 

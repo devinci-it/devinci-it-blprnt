@@ -11,7 +11,7 @@ use Throwable;
  */
 class Installer
 {
-    private const SKELETON_DIRS = ['app', 'bootstrap', 'routes', 'config'];
+    private const SKELETON_DIRS = ['bootstrap', 'routes', 'config'];
     private const SKELETON_FILES = ['.env', 'blprnt'];
 
     /**
@@ -61,6 +61,7 @@ class Installer
             }
         }
 
+        self::publishAppFromSkeleton($projectRoot, $packageRoot, $io);
         self::publishResourceDirectories($projectRoot, $packageRoot, $io);
         self::publishResourceFiles($projectRoot, $packageRoot, $io);
         self::publishPublicEntryPoint($projectRoot, $packageRoot, $io);
@@ -99,6 +100,65 @@ class Installer
         }
 
         closedir($dir);
+    }
+
+    /**
+     * Publishes missing app files from resources/skel/app without replacing existing files.
+     */
+    private static function publishAppFromSkeleton(string $projectRoot, string $packageRoot, ?IOInterface $io = null): void
+    {
+        $srcRoot = rtrim($packageRoot, '/') . '/resources/skel/app';
+        $dstRoot = rtrim($projectRoot, '/') . '/app';
+
+        if (!is_dir($srcRoot)) {
+            return;
+        }
+
+        $publishedFiles = self::copyMissingFilesRecursive($srcRoot, $dstRoot);
+
+        if ($io !== null && $publishedFiles > 0) {
+            $io->write(sprintf('<info>[blprnt]</info> Published %d app skeleton file(s) from resources/skel/app', $publishedFiles));
+        }
+    }
+
+    /**
+     * Recursively copies files only when target files do not exist.
+     */
+    private static function copyMissingFilesRecursive(string $src, string $dst): int
+    {
+        $dir = opendir($src);
+
+        if ($dir === false) {
+            return 0;
+        }
+
+        if (!is_dir($dst)) {
+            @mkdir($dst, 0755, true);
+        }
+
+        $copied = 0;
+
+        while (false !== ($entry = readdir($dir))) {
+            if ($entry === '.' || $entry === '..') {
+                continue;
+            }
+
+            $sourcePath = $src . '/' . $entry;
+            $destPath = $dst . '/' . $entry;
+
+            if (is_dir($sourcePath)) {
+                $copied += self::copyMissingFilesRecursive($sourcePath, $destPath);
+                continue;
+            }
+
+            if (!file_exists($destPath) && @copy($sourcePath, $destPath)) {
+                $copied++;
+            }
+        }
+
+        closedir($dir);
+
+        return $copied;
     }
 
     /**
