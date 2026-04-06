@@ -84,5 +84,3 @@
 
 
 $router->get('/', [App\Controllers\SplashController::class, 'index']);
-$router->get('/demo/blog-post', [App\Controllers\Demo\BlogPostController::class, 'index']);
-// $router->post('/demo/blog-post', [App\Controllers\Demo\BlogPostController::class, 'store']);
