@@ -1,0 +1,29 @@
+$bg-palette: (
+    default: (#ffffff, #1f2328, #d0d7de),
+    muted: (#f6f8fa, #24292f, #d8dee4),
+    emphasis: (#1f2328, #ffffff, #ffffff),
+    neutral: (#6e7781, #ffffff, #ffffff),
+    accent: (#0969da, #ffffff, #ffffff),
+    success: (#1f883d, #ffffff, #ffffff),
+    attention: (#f3a100, #ffffff, #ffffff),
+    severe: (#bc4c00, #ffffff, #ffffff),
+    danger: (#cf222e, #ffffff, #ffffff),
+    done: (#8250df, #ffffff, #ffffff)
+);
+
+@each $name, $values in $bg-palette {
+    .bg-#{$name} {
+        background-color: nth($values, 1);
+        color: nth($values, 2);
+        border-color: nth($values, 3);
+    }
+}
+
+.bg-surface-soft {
+    background-image: linear-gradient(160deg, #ffffff, #f3f6fa);
+}
+
+.bg-surface-emphasis {
+    background-image: linear-gradient(160deg, #1f2937, #111827);
+    color: #ffffff;
+}

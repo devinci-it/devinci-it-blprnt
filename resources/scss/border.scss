@@ -1,0 +1,50 @@
+/**
+ * Border utilities
+ * - Rem-based widths
+ * - Color variants
+ * - Side-specific helpers
+ */
+
+$border-default-width: 0.0625rem;
+$border-strong-width: 0.125rem;
+$border-default-color: #d0d7de;
+
+$border-colors: (
+  primary: #0969da,
+  secondary: #6c757d,
+  success: #1f883d,
+  danger: #cf222e,
+  warning: #f3a100,
+  info: #1f6feb
+);
+
+@mixin border($side, $width: $border-default-width, $color: $border-default-color) {
+  @if $side == all {
+    border: $width solid $color;
+  } @else if $side == horizontal {
+    border-top: $width solid $color;
+    border-bottom: $width solid $color;
+  } @else if $side == vertical {
+    border-right: $width solid $color;
+    border-left: $width solid $color;
+  } @else {
+    border-#{$side}: $width solid $color;
+  }
+}
+
+.border-t { @include border(top); }
+.border-r { @include border(right); }
+.border-b { @include border(bottom); }
+.border-l { @include border(left); }
+.border-h { @include border(horizontal); }
+.border-v { @include border(vertical); }
+.border-all { @include border(all); }
+
+.border-soft { border-width: $border-default-width; }
+.border-strong { border-width: $border-strong-width; }
+
+@each $name, $color in $border-colors {
+  .border-#{$name} {
+    @include border(all, $border-strong-width, $color);
+  }
+}

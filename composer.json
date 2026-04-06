@@ -1,0 +1,31 @@
+{
+  "name": "devinci-it/blprnt",
+  "description": "A minimal, extensible PHP micro-framework (Blueprint for modern apps)",
+  "type": "composer-plugin",
+  "autoload": {
+    "psr-4": {
+      "DevinciIT\\Blprnt\\": "src/",
+      "App\\": "app/"
+    }
+  },
+  "require": {
+    "composer-plugin-api": "*",
+    "vlucas/phpdotenv": "^5.6",
+    "scssphp/scssphp": "^1.13"
+  },
+  "extra": {
+    "class": "DevinciIT\\Blprnt\\Composer\\BlprntPlugin"
+  },
+  "license": "MIT",
+  "bin": [
+    "blprnt"
+  ],
+  "scripts": {
+    "post-install-cmd": [
+      "DevinciIT\\Blprnt\\Composer\\Installer::postInstall"
+    ],
+    "post-update-cmd": [
+      "DevinciIT\\Blprnt\\Composer\\Installer::postUpdate"
+    ]
+  }
+}

@@ -1,0 +1,15 @@
+<?php
+namespace {{ namespace }};
+
+use DevinciIT\Blprnt\Core\Controller;
+use DevinciIT\Blprnt\Core\View;
+
+class {{ class }} extends Controller
+{
+    public function index()
+    {
+        return View::render('{{ view }}', [
+            'title' => '{{ title }}'
+        ]);
+    }
+}

@@ -1,0 +1,89 @@
+#!/usr/bin/env php
+<?php
+
+declare(strict_types=1);
+
+use DevinciIT\Blprnt\Console\Command;
+use DevinciIT\Blprnt\Console\CommandRegistry;
+use DevinciIT\Blprnt\Console\Kernel;
+
+$autoloadCandidates = [
+    __DIR__ . '/vendor/autoload.php',
+    __DIR__ . '/../../autoload.php',
+];
+
+$autoloadLoaded = false;
+foreach ($autoloadCandidates as $autoloadPath) {
+    if (is_file($autoloadPath)) {
+        require $autoloadPath;
+        $autoloadLoaded = true;
+        break;
+    }
+}
+
+if (!$autoloadLoaded) {
+    fwrite(STDERR, "Unable to locate Composer autoload.php.\n");
+    exit(1);
+}
+
+if (class_exists('Dotenv\\Dotenv') && is_file(getcwd() . '/.env')) {
+    Dotenv\Dotenv::createImmutable(getcwd())->safeLoad();
+}
+
+/**
+ * Discover and register all command classes in src/Console/Commands  or vendor/devinci-it/blprnt/src/Console/Commands recursively.
+ */
+function blprntRegisterCommands(string $commandsPath, string $baseNamespace): void
+{
+    if (!is_dir($commandsPath)) {
+        return;
+    }
+
+    $iterator = new RecursiveIteratorIterator(
+        new RecursiveDirectoryIterator($commandsPath, FilesystemIterator::SKIP_DOTS)
+    );
+
+    foreach ($iterator as $file) {
+        if (!$file->isFile() || $file->getExtension() !== 'php') {
+            continue;
+        }
+
+        $fullPath = $file->getPathname();
+        require_once $fullPath;
+
+        $relative = substr($fullPath, strlen($commandsPath) + 1);
+        $classPath = str_replace(['/', '.php'], ['\\', ''], $relative);
+        $fqcn = $baseNamespace . '\\' . $classPath;
+
+        if (!class_exists($fqcn)) {
+            continue;
+        }
+
+        if (!is_subclass_of($fqcn, Command::class)) {
+            continue;
+        }
+
+        $reflection = new ReflectionClass($fqcn);
+        if ($reflection->isAbstract()) {
+            continue;
+        }
+
+        CommandRegistry::register(new $fqcn());
+    }
+}
+
+if (is_dir(__DIR__ . '/src/Console/Commands')) {
+  $path = __DIR__ . '/src/Console/Commands';
+} elseif (is_dir(__DIR__ . '/vendor/devinci-it/blprnt/src/Console/Commands')) {
+    $path = __DIR__ . '/vendor/devinci-it/blprnt/src/Console/Commands';
+} else {
+    $path = null;
+}
+
+blprntRegisterCommands(
+    $path,
+    'DevinciIT\\Blprnt\\Console\\Commands'
+);
+
+$kernel = new Kernel();
+$kernel->handle($argv);
