@@ -110,6 +110,12 @@ $env = getenv('APP_ENV') ?: 'local';
 		z-index: -1;
 	}
 
+	footer{
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		flex-direction: column;
+	}
 	/* animations */
 	@keyframes float {
 
@@ -153,7 +159,7 @@ $env = getenv('APP_ENV') ?: 'local';
 <div class="logo-glow"></div>
 
 <main class="splash">
-	<img src="/logo.svg" alt="Blprnt Logo" class="logo">
+		<img src="/graphics.svg" alt="Graphics" />
 
 	<p class="tagline">
 		Your application is up and running | Start building something amazing.
@@ -171,6 +177,12 @@ $env = getenv('APP_ENV') ?: 'local';
 		Environment: <?= htmlspecialchars($env) ?>
 	</div>
 </main>
+<footer style="position: absolute; bottom: 12px; font-size: 0.75rem; color: var(--muted); opacity: 0.7;">
+	<img src="/logo.svg" alt="Blprnt Logo" class="logo">
+
+	&copy; <?= date('Y') ?> 	 | Devinci IT 
+</footer>
+
 
 <script>
 	/* subtle entrance delay for elements */
