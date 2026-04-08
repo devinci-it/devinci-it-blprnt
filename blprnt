@@ -72,18 +72,31 @@ function blprntRegisterCommands(string $commandsPath, string $baseNamespace): vo
     }
 }
 
-if (is_dir(__DIR__ . '/src/Console/Commands')) {
-  $path = __DIR__ . '/src/Console/Commands';
-} elseif (is_dir(__DIR__ . '/vendor/devinci-it/blprnt/src/Console/Commands')) {
-    $path = __DIR__ . '/vendor/devinci-it/blprnt/src/Console/Commands';
-} else {
-    $path = null;
-}
+// Check if running from framework directory or from a project using the framework
+$isFrameworkContext = file_exists(__DIR__ . '/src') && file_exists(__DIR__ . '/composer.json') && 
+                      json_decode(file_get_contents(__DIR__ . '/composer.json'), true)['name'] === 'devinci-it/blprnt';
 
-blprntRegisterCommands(
-    $path,
-    'DevinciIT\\Blprnt\\Console\\Commands'
-);
+if ($isFrameworkContext) {
+    // Running framework directly (development)
+    if (is_dir(__DIR__ . '/src/Console/Commands')) {
+        $path = __DIR__ . '/src/Console/Commands';
+        blprntRegisterCommands($path, 'DevinciIT\\Blprnt\\Console\\Commands');
+    }
+} else {
+    // Running from a project using the framework
+    
+    // Register user project commands
+    if (is_dir(__DIR__ . '/src/Console/Commands')) {
+        $path = __DIR__ . '/src/Console/Commands';
+        blprntRegisterCommands($path, 'App\\Console\\Commands');
+    }
+
+    // Always register framework commands
+    if (is_dir(__DIR__ . '/vendor/devinci-it/blprnt/src/Console/Commands')) {
+        $path = __DIR__ . '/vendor/devinci-it/blprnt/src/Console/Commands';
+        blprntRegisterCommands($path, 'DevinciIT\\Blprnt\\Console\\Commands');
+    }
+}
 
 $kernel = new Kernel();
 $kernel->handle($argv);
