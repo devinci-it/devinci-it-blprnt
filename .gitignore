@@ -8,3 +8,5 @@ app/
 CONTAINER_REFACTORING_SUMMARY.md
 docs/wiki/Architecture/ServiceContainer.md
 docs/examples/ServiceContainerExample.php
+docs/**
+config/assets.example.php
