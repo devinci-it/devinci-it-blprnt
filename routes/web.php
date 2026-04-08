@@ -8,20 +8,22 @@
  *
  * Each route maps a URI + HTTP method to:
  *  - a Closure (quick / simple logic)
- *  - or a Controller action (recommended)
+ *  - or a Controller action (array: [ControllerClass::class, 'methodName'])
+ *
+ * Supported HTTP methods: GET, POST, PUT, PATCH, DELETE
  *
  * --------------------------------------------------------------------------
- * BASIC ROUTE (Closure)
+ * CLOSURE-BASED ROUTE
  * --------------------------------------------------------------------------
  *
  * $router->get('/', function () {
  *     return 'Hello, world!';
  * });
  *
- * Use closures for simple logic, testing, or quick responses.
+ * Use closures for simple logic, testing, prototyping, or quick responses.
  *
  * --------------------------------------------------------------------------
- * CONTROLLER ROUTE (Recommended)
+ * CONTROLLER ROUTE (RECOMMENDED)
  * --------------------------------------------------------------------------
  *
  * $router->get('/users', [App\Controllers\UserController::class, 'index']);
@@ -30,32 +32,28 @@
  *
  *     App\Controllers\UserController::index()
  *
- * Keep your application structured by using controllers.
+ * Prefer controllers for production applications to keep code organized.
  *
  * --------------------------------------------------------------------------
- * DEFAULT ROUTE
+ * HTTP METHODS
  * --------------------------------------------------------------------------
  *
- * $router->get('/', [App\Controllers\HomeController::class, 'index']);
- *
- * This is your application's homepage.
+ * $router->get('/resource', [...]);      // Retrieve data
+ * $router->post('/resource', [...]);     // Create data
+ * $router->put('/resource/{id}', [...]);   // Replace entire resource
+ * $router->patch('/resource/{id}', [...]);  // Partial update
+ * $router->delete('/resource/{id}', [...]);  // Delete resource
  *
  * --------------------------------------------------------------------------
- * DYNAMIC ROUTES (PARAMETERS)
+ * ROUTE GROUPING WITH MIDDLEWARE
  * --------------------------------------------------------------------------
  *
- * $router->get('/users/{id}', [UserController::class, 'show']);
+ * $router->group(['middleware' => [AuthMiddleware::class]], function($r) {
+ *     $r->get('/admin', [AdminController::class, 'dashboard']);
+ *     $r->post('/admin/settings', [AdminController::class, 'updateSettings']);
+ * });
  *
- * URL example:
- *     /users/42
- *
- * The parameter will be passed to your controller method:
- *
- *     public function show($id)
- *
- * You can define multiple parameters:
- *
- * $router->get('/posts/{postId}/comments/{commentId}', [CommentController::class, 'show']);
+ * Group related routes and apply shared middleware to all of them.
  *
  * --------------------------------------------------------------------------
  * BEST PRACTICES
@@ -65,6 +63,8 @@
  * - Keep controllers small and focused
  * - Validate all incoming parameters
  * - Organize routes by feature or module
+ * - Use route grouping to apply middleware to related routes
+ * - Use closures for simple responses or when prototyping
  *
  * --------------------------------------------------------------------------
  * EXAMPLE ROUTES
@@ -75,6 +75,7 @@
  * $router->get('/users/{id}', [UserController::class, 'show']);
  * $router->post('/users', [UserController::class, 'store']);
  * $router->put('/users/{id}', [UserController::class, 'update']);
+ * $router->patch('/users/{id}', [UserController::class, 'patch']);
  * $router->delete('/users/{id}', [UserController::class, 'destroy']);
  *
  * --------------------------------------------------------------------------
