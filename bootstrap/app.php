@@ -79,7 +79,7 @@ $container->bind('router', function () use (&$router) {
 });
 
 /* --------------------------------------------------------------------------
- VIEW Edit routes/web.php to get started 
+ VIEW 
  --------------------------------------------------------------------------
  Initialize the static View with base path for view files.
  View uses static methods and is not bound to the container since it's
@@ -91,9 +91,53 @@ View::init(__DIR__ . '/../app/Views');
  HELPERS
  --------------------------------------------------------------------------
 
- Load all global helper functions available to the application
- This makes app() and view() available globally
+ Load all global helper functions available to the application:
+ - app()                 Get the service container
+ - router()              Get the router instance  
+ - view()                Render a view with data and optional assets
+ - set_default_assets()  Configure global CSS/JS for all views
+
+ This makes all helpers available globally for routes and controllers.
 -------------------------------------------------------------------------- */
+require __DIR__ . '/helpers.php';
+
+/* --------------------------------------------------------------------------
+ GLOBAL/DEFAULT ASSETS
+ --------------------------------------------------------------------------
+ Register CSS and JavaScript files to be included in all views automatically.
+ These are added before per-render assets, so page-specific assets can override them.
+ 
+ FILE VALIDATION: All paths are checked relative to public/ directory.
+ If a file is not found, a warning is logged but rendering continues.
+ 
+ Best practice structure:
+ - public/assets/css/reset.css
+ - public/assets/css/theme.css
+ - public/assets/js/common.js
+ 
+ Use set_default_assets() helper (available after loading helpers above).
+ Call this once, and all views automatically get these assets—no need to pass them!
+ 
+ Files must exist before being registered. Create them first, then uncomment below.
+-------------------------------------------------------------------------- */
+
+// Example: Uncomment after creating asset files
+/*
+set_default_assets(
+    [
+        'assets/css/reset.css',
+        'assets/css/theme.css',
+    ],
+    [
+        'assets/js/common.js',
+        ['path' => 'assets/js/utils.js', 'defer' => true]
+    ]
+);
+// Then in your controllers, just use:
+//   view('dashboard', $data);  // CSS & JS already included automatically!
+// Or with page-specific assets:
+//   view('dashboard', $data, ['assets/css/dashboard.css']);
+*/
 require __DIR__ . '/helpers.php';
 
 /* --------------------------------------------------------------------------

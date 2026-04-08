@@ -1,4 +1,3 @@
-<?php use DevinciIT\Blprnt\Core\View; ?>
 <!DOCTYPE html>
 <html lang="en">
 
@@ -12,7 +11,7 @@
 
     <!-- CSS -->
     <?= $cssMeta ?? '' ?>
-    <?php foreach (View::getCssFiles() as $css): ?>
+    <?php foreach ($defaultCss as $css): ?>
         <link rel="stylesheet" href="<?= $css ?>">
     <?php endforeach; ?>
 
@@ -24,7 +23,7 @@
     <?= $content ?>
 
     <!-- JS -->
-    <?php foreach (View::getJsFiles() as $js): ?>
+    <?php foreach ($defaultJs as $js): ?>
         <script src="<?= $js['path'] ?>"<?= $js['defer'] ? ' defer' : '' ?>></script>
     <?php endforeach; ?>
 </body>
