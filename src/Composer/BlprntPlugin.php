@@ -115,6 +115,7 @@ class BlprntPlugin implements PluginInterface, EventSubscriberInterface
         $projectRoot = dirname($composer->getConfig()->get('vendor-dir'));
         $missingSkeleton = false;
 
+        // Check core directories
         foreach (['app', 'bootstrap', 'routes', 'config', '.env', 'blprnt'] as $entry) {
             if (!file_exists($projectRoot . '/' . $entry)) {
                 $missingSkeleton = true;
@@ -122,8 +123,22 @@ class BlprntPlugin implements PluginInterface, EventSubscriberInterface
             }
         }
 
-        if (!file_exists($projectRoot . '/app/Views') || !file_exists($projectRoot . '/public/index.php')) {
+        // Check essential app/Views and app/Controllers directories
+        if (!is_dir($projectRoot . '/app/Views') || !is_dir($projectRoot . '/app/Controllers')) {
             $missingSkeleton = true;
+        }
+
+        // Check public entry point
+        if (!file_exists($projectRoot . '/public/index.php')) {
+            $missingSkeleton = true;
+        }
+
+        // Check resource directories
+        foreach (['resources/views', 'resources/scss', 'resources/js'] as $dir) {
+            if (!is_dir($projectRoot . '/' . $dir)) {
+                $missingSkeleton = true;
+                break;
+            }
         }
 
         if ($missingSkeleton) {

@@ -8,11 +8,92 @@ use Throwable;
 
 /**
  * Handles project scaffolding publication during Composer install/update flows.
+ *
+ * Publish configuration is centralized in getPublishConfig() for easy maintenance.
  */
 class Installer
 {
-    private const SKELETON_DIRS = ['bootstrap', 'routes', 'config'];
-    private const SKELETON_FILES = ['.env', 'blprnt'];
+/**
+ * Get the centralized publish configuration.
+ *
+ * Define all files and directories to publish here:
+ * - 'directories': Copy entire directory trees from package to project
+ * - 'files': Copy individual files from package to project
+ * - 'resources': Map resource sources to project destinations (with recursion)
+ * - 'create': Create empty directories in project if they don't exist
+ *
+ * GUIDELINES FOR ADDING PUBLISHING RULES:
+ * ========================================
+ *
+ * 1. To publish a directory tree (non-destructive):
+ *    Add to 'directories': 'src/my-dir' => 'my-dir'
+ *    Only copies if destination doesn't exist.
+ *
+ * 2. To publish a single file:
+ *    Add to 'files': 'my-file.example' => 'my-file.example'
+ *    Only copies if destination doesn't exist.
+ *
+ * 3. To publish a resource with recursion:
+ *    Add to 'resources': 'resources/my-resource' => 'resources/my-resource'
+ *    Recursively copies entire directory.
+ *
+ * 4. To create empty scaffold directory:
+ *    Add to 'create': 'my/empty/dir'
+ *    Created if doesn't exist (useful for user-created content).
+ *
+ * 5. To publish public/web-accessible files:
+ *    Add to 'public': 'resources/my-asset.svg' => 'public/my-asset.svg'
+ *    Copies single files to public directory.
+ *
+ * EXAMPLE:
+ * --------
+ * To add a new config file 'webpack.config.js':
+ *     'files' => [
+ *         '.env' => '.env',
+ *         'blprnt' => 'blprnt',
+ *         'webpack.config.js' => 'webpack.config.js',  // ← Add here
+ *     ],
+ *
+ * To add an assets directory 'resources/fonts':
+ *     'resources' => [
+ *         'resources/scss' => 'resources/scss',
+ *         'resources/fonts' => 'resources/fonts',      // ← Add here
+ *     ],
+ *
+ * @return array Publish configuration mapping
+ */
+    private static function getPublishConfig(): array
+    {
+        return [
+            // Core skeleton directories (root-level)
+            'directories' => [
+                'bootstrap' => 'bootstrap',
+                'routes' => 'routes',
+                'config' => 'config',
+            ],
+            // Core skeleton files (root-level)
+            'files' => [
+                '.env' => '.env',
+                'blprnt' => 'blprnt',
+            ],
+            // Resource mappings (recursive copy)
+            'resources' => [
+                'resources/scss' => 'resources/scss',
+            ],
+            // Directories to create if missing (empty scaffolding)
+            'create' => [
+                'resources/views',
+                'resources/js',
+            ],
+            // Public entry point (special handling)
+            'public' => [
+                'resources/img/graphics.svg' => 'public/graphics.svg',
+                'public/index.php' => 'public/index.php',
+                'resources/logo.svg' => 'public/logo.svg',
+                'resources/favicon.svg' => 'public/favicon.svg',
+            ],
+        ];
+    }
 
     /**
      * Composer post-install hook.
@@ -35,37 +116,74 @@ class Installer
      */
     public static function publishForProject(string $projectRoot, string $packageRoot, ?IOInterface $io = null): void
     {
-        foreach (self::SKELETON_DIRS as $dir) {
-            $src = rtrim($packageRoot, '/') . '/' . $dir;
-            $dest = rtrim($projectRoot, '/') . '/' . $dir;
+        if ($io !== null) {
+            $io->write('');
+            $io ->write('
+    ▄▄▄▄  ▄▄    ▄▄▄▄  ▄▄▄▄  ▄▄  ▄▄ ▄▄▄▄▄▄ 
+    ██▄██ ██    ██▄█▀ ██▄█▄ ███▄██   ██   
+    ██▄█▀ ██▄▄▄ ██    ██ ██ ██ ▀██   ██   ');
+            $io->write('<info>  ════════════════════════════════════════</info>');
+            $io->write('<info>      Blprnt Framework - Publishing Assets</info>');
+            $io->write('<info>  ════════════════════════════════════════</info>');
+            $io->write('');
+        }
+
+        $config = self::getPublishConfig();
+
+        // Publish core directories
+        foreach ($config['directories'] as $dirName => $destination) {
+            $src = rtrim($packageRoot, '/') . '/' . $dirName;
+            $dest = rtrim($projectRoot, '/') . '/' . $destination;
 
             if (file_exists($src) && !file_exists($dest)) {
                 self::recurseCopy($src, $dest);
-
                 if ($io !== null) {
-                    $io->write(sprintf('<info>[blprnt]</info> Published %s', $dir));
+                    $io->write(sprintf('  <info>[blprnt]</info> Published %s', $destination));
                 }
             }
         }
 
-        foreach (self::SKELETON_FILES as $file) {
-            $src = rtrim($packageRoot, '/') . '/' . $file;
-            $dest = rtrim($projectRoot, '/') . '/' . $file;
+        // Publish core files
+        foreach ($config['files'] as $fileName => $destination) {
+            $src = rtrim($packageRoot, '/') . '/' . $fileName;
+            $dest = rtrim($projectRoot, '/') . '/' . $destination;
 
             if (is_file($src) && !file_exists($dest)) {
                 @copy($src, $dest);
-
                 if ($io !== null) {
-                    $io->write(sprintf('<info>[blprnt]</info> Published %s', $file));
+                    $io->write(sprintf('  <info>[blprnt]</info> Published %s', $destination));
                 }
             }
         }
 
+        // Publish resource directories
+        foreach ($config['resources'] as $source => $destination) {
+            self::publishResourceDirectory($projectRoot, $packageRoot, $source, $destination, $io);
+        }
+
+        // Create empty scaffold directories
+        foreach ($config['create'] as $dir) {
+            self::ensureDirectoryExists($projectRoot, $dir, $io);
+        }
+
+        // Publish app skeleton (non-destructive)
         self::publishAppFromSkeleton($projectRoot, $packageRoot, $io);
-        self::publishResourceDirectories($projectRoot, $packageRoot, $io);
-        self::publishResourceFiles($projectRoot, $packageRoot, $io);
-        self::publishPublicEntryPoint($projectRoot, $packageRoot, $io);
+
+        // Publish public files
+        foreach ($config['public'] as $source => $destination) {
+            self::publishPublicFile($projectRoot, $packageRoot, $source, $destination, $io);
+        }
+
+        // Build styles
         self::buildStyles($projectRoot, $io);
+
+        if ($io !== null) {
+            $io->write('');
+            $io->write('<info>  ════════════════════════════════════════</info>');
+            $io->write('<info>      Publishing Complete!</info>');
+            $io->write('<info>  ════════════════════════════════════════</info>');
+            $io->write('');
+        }
     }
 
     /**
@@ -117,7 +235,7 @@ class Installer
         $publishedFiles = self::copyMissingFilesRecursive($srcRoot, $dstRoot);
 
         if ($io !== null && $publishedFiles > 0) {
-            $io->write(sprintf('<info>[blprnt]</info> Published %d app skeleton file(s) from resources/skel/app', $publishedFiles));
+            $io->write(sprintf('  <info>[blprnt]</info> Published %d app skeleton file(s) from resources/skel/app', $publishedFiles));
         }
     }
 
@@ -163,74 +281,51 @@ class Installer
 
     /**
      * Publishes resource-backed directories used by the generated project.
+     *
+     * Note: app/Views is sourced from resources/skel/app/Views/ via publishAppFromSkeleton()
+     * to ensure the layout template is the single source of truth.
      */
-    private static function publishResourceDirectories(string $projectRoot, string $packageRoot, ?IOInterface $io = null): void
+    private static function publishResourceDirectory(string $projectRoot, string $packageRoot, string $source, string $destination, ?IOInterface $io = null): void
     {
-        $resourceMap = [
-            'resources/views' => 'app/Views',
-            'resources/scss' => 'resources/scss',
-        ];
+        $src = rtrim($packageRoot, '/') . '/' . $source;
+        $dest = rtrim($projectRoot, '/') . '/' . $destination;
 
-        foreach ($resourceMap as $source => $destination) {
-            $src = rtrim($packageRoot, '/') . '/' . $source;
-            $dest = rtrim($projectRoot, '/') . '/' . $destination;
-
-            if (!is_dir($src) || file_exists($dest)) {
-                continue;
-            }
-
+        if (is_dir($src) && !file_exists($dest)) {
             self::recurseCopy($src, $dest);
-
             if ($io !== null) {
-                $io->write(sprintf('<info>[blprnt]</info> Published %s from %s', $destination, $source));
+                $io->write(sprintf('  <info>[blprnt]</info> Published %s from %s', $destination, $source));
             }
         }
     }
 
     /**
-     * Publishes static resource files into the public web root.
+     * Ensure a directory exists, creating it if necessary.
      */
-    private static function publishResourceFiles(string $projectRoot, string $packageRoot, ?IOInterface $io = null): void
+    private static function ensureDirectoryExists(string $projectRoot, string $dir, ?IOInterface $io = null): void
     {
-        $resourceFileMap = [
-            'resources/logo.svg' => 'public/logo.svg',
-            'resources/favicon.svg' => 'public/favicon.svg',
-        ];
-
-        foreach ($resourceFileMap as $source => $destination) {
-            $src = rtrim($packageRoot, '/') . '/' . $source;
-            $dest = rtrim($projectRoot, '/') . '/' . $destination;
-
-            if (!is_file($src) || file_exists($dest)) {
-                continue;
+        $path = rtrim($projectRoot, '/') . '/' . $dir;
+        if (!is_dir($path)) {
+            @mkdir($path, 0755, true);
+            if ($io !== null) {
+                $io->write(sprintf('  <info>[blprnt]</info> Created %s directory', $dir));
             }
+        }
+    }
 
+    /**
+     * Publish a single public file (config-driven).
+     */
+    private static function publishPublicFile(string $projectRoot, string $packageRoot, string $source, string $destination, ?IOInterface $io = null): void
+    {
+        $src = rtrim($packageRoot, '/') . '/' . $source;
+        $dest = rtrim($projectRoot, '/') . '/' . $destination;
+
+        if (is_file($src) && !file_exists($dest)) {
             @mkdir(dirname($dest), 0755, true);
             @copy($src, $dest);
-
             if ($io !== null) {
-                $io->write(sprintf('<info>[blprnt]</info> Published %s from %s', $destination, $source));
+                $io->write(sprintf('  <info>[blprnt]</info> Published %s from %s', $destination, $source));
             }
-        }
-    }
-
-    /**
-     * Publishes the public front controller when absent.
-     */
-    private static function publishPublicEntryPoint(string $projectRoot, string $packageRoot, ?IOInterface $io = null): void
-    {
-        $src = rtrim($packageRoot, '/') . '/public/index.php';
-        $dest = rtrim($projectRoot, '/') . '/public/index.php';
-
-        if (!is_file($src) || file_exists($dest)) {
-            return;
-        }
-
-        @mkdir(dirname($dest), 0755, true);
-        @copy($src, $dest);
-
-        if ($io !== null) {
-            $io->write('<info>[blprnt]</info> Published public/index.php');
         }
     }
 
@@ -244,6 +339,8 @@ class Installer
         try {
             chdir($projectRoot);
 
+            // Suppress command output
+            ob_start();
             $command = new BuildStylesCommand();
             $command->run([
                 '--source=resources/scss',
@@ -251,13 +348,14 @@ class Installer
                 '--style=compressed',
                 '--force',
             ]);
+            ob_end_clean();
 
             if ($io !== null) {
-                $io->write('<info>[blprnt]</info> Built CSS from resources/scss');
+                $io->write(sprintf('  <info>[blprnt]</info> Built CSS to public/vendor/devinci-it/blprnt/css from resources/scss'));
             }
         } catch (Throwable $e) {
             if ($io !== null) {
-                $io->write(sprintf('<comment>[blprnt]</comment> Style build skipped: %s', $e->getMessage()));
+                $io->write(sprintf('  <comment>[blprnt]</comment> CSS build failed: %s', $e->getMessage()));
             }
         } finally {
             if (is_string($cwd) && $cwd !== '') {
