@@ -20,17 +20,29 @@ class Router
     protected $groupMiddleware = [];
 
     /**
-     * Create a route group with shared middleware
+     * @var string URI prefix to apply to all routes in a group
+     */
+    protected $groupPrefix = '';
+
+    /**
+     * Create a route group with shared middleware and/or prefix
      *
-     * @param array $opts Group options including 'middleware' key
+     * @param array $opts Group options including 'middleware' and 'prefix' keys
      * @param callable $callback Callback function to register routes within the group
      * @return void
+     *
+     * @example
+     * $router->group(['prefix' => '/api', 'middleware' => [ApiMiddleware::class]], function ($router) {
+     *     $router->get('/posts', [PostController::class, 'index']);
+     * });
      */
     public function group($opts, $callback)
     {
         $this->groupMiddleware = $opts['middleware'] ?? [];
+        $this->groupPrefix = $opts['prefix'] ?? '';
         $callback($this);
         $this->groupMiddleware = [];
+        $this->groupPrefix = '';
     }
 
     /**
@@ -44,7 +56,10 @@ class Router
      */
     protected function addRoute($method, $uri, $action, $middleware = [])
     {
-        $this->routes[$method][$uri] = [
+        // Apply group prefix if present
+        $fullUri = $this->groupPrefix . $uri;
+
+        $this->routes[$method][$fullUri] = [
             'action' => $action,
             'middleware' => array_merge($this->groupMiddleware, $middleware)
         ];
@@ -205,9 +220,33 @@ class Router
      * @return mixed The result from the route handler
      * @throws \Exception If the route is not found
      */
-    public function dispatch($uri, $method)
+    public function dispatch($uri, $method, $request = null)
     {
-        $route = $this->routes[$method][$uri] ?? null;
+        $route = null;
+        $params = [];
+
+        // Try exact match first
+        if (isset($this->routes[$method][$uri])) {
+            $route = $this->routes[$method][$uri];
+        } else {
+            // Try dynamic parameter matching
+            foreach ($this->routes[$method] ?? [] as $routePattern => $routeData) {
+                $pattern = preg_replace('/\{([^}]+)\}/', '(?P<\1>[^/]+)', $routePattern);
+                $pattern = "#^{$pattern}$#";
+                
+                if (preg_match($pattern, $uri, $matches)) {
+                    $route = $routeData;
+                    // Extract named parameters
+                    foreach ($matches as $key => $value) {
+                        if (!is_numeric($key)) {
+                            $params[$key] = $value;
+                        }
+                    }
+                    break;
+                }
+            }
+        }
+
         if (!$route) {
             // Debug: show what routes are available
             $availableRoutes = [];
@@ -225,18 +264,22 @@ class Router
             throw new \Exception($message);
         }
         
-        // Execute middleware
+        // Execute middleware - pass Request object to each middleware handler
         foreach ($route['middleware'] as $mw) {
-            (new $mw)->handle();
+            (new $mw)->handle($request);
         }
         
         // Handle closure-based action
         if ($this->isClosure($route['action'])) {
-            return call_user_func($route['action']);
+            return call_user_func($route['action'], $request, ...$params);
         }
         
         // Handle controller/method action
         [$controller, $actionMethod] = $route['action'];
-        return (new $controller)->$actionMethod();
+        $controller_instance = new $controller();
+        
+        // Pass Request object and route parameters
+        $paramValues = array_values($params);
+        return $controller_instance->$actionMethod($request, ...$paramValues);
     }
 }

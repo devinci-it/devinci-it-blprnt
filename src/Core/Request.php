@@ -72,6 +72,36 @@ class Request
     {
         return php_sapi_name() === 'cli';
     }
+
+    /**
+     * Check if this is an API request
+     * API indicators: /api route prefix OR application/json Accept/Content-Type
+     */
+    public function isApi(): bool
+    {
+        $uri = $this->uri();
+        $isApiRoute = strpos($uri, '/api') === 0 || strpos($uri, '/api/') === 0;
+        $acceptsJson = strpos($this->accept(), 'application/json') !== false;
+        $isJsonContent = strpos($this->contentType(), 'application/json') !== false;
+
+        return $isApiRoute || $acceptsJson || $isJsonContent;
+    }
+
+    /**
+     * Check if this is a web request (traditional HTTP from browser)
+     */
+    public function isWeb(): bool
+    {
+        return !$this->isApi() && !self::isCliRequest();
+    }
+
+    /**
+     * Check if this is a CLI request
+     */
+    public function isCli(): bool
+    {
+        return self::isCliRequest();
+    }
 }
 
 
