@@ -1,3 +1,4 @@
 vendor
 **/vendor/*
 .env
+.github/agents/php-doc-lint.agent.md
