@@ -102,6 +102,58 @@ class Request
     {
         return self::isCliRequest();
     }
+
+    /**
+     * Check if a file was uploaded in this request
+     */
+    public function hasFile(string $field): bool
+    {
+        return isset($_FILES[$field]) && $_FILES[$field]['error'] === UPLOAD_ERR_OK;
+    }
+
+    /**
+     * Get uploaded file info
+     *
+     * @return array|null File info array with keys: name, type, size, tmp_name, error
+     */
+    public function file(string $field): ?array
+    {
+        if (!$this->hasFile($field)) {
+            return null;
+        }
+
+        return [
+            'name' => $_FILES[$field]['name'],
+            'type' => $_FILES[$field]['type'],
+            'size' => $_FILES[$field]['size'],
+            'tmp_name' => $_FILES[$field]['tmp_name'],
+            'error' => $_FILES[$field]['error'],
+        ];
+    }
+
+    /**
+     * Get all uploaded files
+     *
+     * @return array Associative array of all uploaded files
+     */
+    public function files(): array
+    {
+        $files = [];
+
+        if (!empty($_FILES)) {
+            foreach ($_FILES as $field => $file_info) {
+                if ($file_info['error'] === UPLOAD_ERR_OK) {
+                    $files[$field] = [
+                        'name' => $file_info['name'],
+                        'type' => $file_info['type'],
+                        'size' => $file_info['size'],
+                        'tmp_name' => $file_info['tmp_name'],
+                        'error' => $file_info['error'],
+                    ];
+                }
+            }
+        }
+
+        return $files;
+    }
 }
-
-

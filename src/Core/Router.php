@@ -282,4 +282,14 @@ class Router
         $paramValues = array_values($params);
         return $controller_instance->$actionMethod($request, ...$paramValues);
     }
+
+    /**
+     * Get all registered routes
+     *
+     * @return array All registered routes organized by method
+     */
+    public function getRoutes(): array
+    {
+        return $this->routes;
+    }
 }
