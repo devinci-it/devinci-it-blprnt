@@ -116,6 +116,74 @@ class Router
     }
 
     /**
+     * Load routes from a file
+     *
+     * The route file is loaded in a context where $router (this Router) is available,
+     * allowing routes to be registered via $router->get(), $router->post(), etc.
+     *
+     * Default path: routes/web.php relative to project root
+     *
+     * @param string|null $path Optional custom path to route file
+     *                           If null, defaults to PROJECT_ROOT/routes/web.php
+     *
+     * @example
+     * // Load default routes/web.php
+     * $router->load();
+     *
+     * // Load specific route file
+     * $router->load(__DIR__ . '/../routes/api.php');
+     * $router->load(__DIR__ . '/../routes/admin.php');
+     *
+     * @return $this For method chaining
+     */
+    public function load(?string $path = null): self
+    {
+        // If no path provided, default to routes/web.php relative to project root
+        if ($path === null) {
+            // Find project root by looking for vendor directory
+            $projectRoot = $this->findProjectRoot();
+            $path = $projectRoot . '/routes/web.php';
+        }
+
+        // Make $router available to the route file as both local and global variable
+        $router = $this;
+        $GLOBALS['router'] = $this;
+
+        // Load the route file in router context
+        if (file_exists($path)) {
+            require $path;
+        } else {
+            throw new \RuntimeException("Route file not found: {$path}");
+        }
+
+        return $this;
+    }
+
+    /**
+     * Find the project root directory
+     *
+     * Traverses up the directory tree looking for vendor directory
+     * or uses __DIR__ as fallback if in a different context
+     *
+     * @return string Absolute path to project root
+     */
+    protected function findProjectRoot(): string
+    {
+        $dir = __DIR__;
+        
+        // Traverse up looking for vendor directory
+        while ($dir !== '/') {
+            if (is_dir($dir . '/vendor')) {
+                return $dir;
+            }
+            $dir = dirname($dir);
+        }
+        
+        // Fallback: return two levels up from src/Core
+        return dirname(dirname(__DIR__));
+    }
+
+    /**
      * Check if an action is a closure or callable function
      *
      * @param mixed $action The action to check
@@ -141,7 +209,20 @@ class Router
     {
         $route = $this->routes[$method][$uri] ?? null;
         if (!$route) {
-            throw new \Exception("Route not found");
+            // Debug: show what routes are available
+            $availableRoutes = [];
+            foreach ($this->routes as $methodKey => $uriRoutes) {
+                foreach ($uriRoutes as $uriKey => $routeData) {
+                    $availableRoutes[] = "$methodKey $uriKey";
+                }
+            }
+            $message = "Route not found: $method $uri\n";
+            if ($availableRoutes) {
+                $message .= "Available routes: " . implode(", ", $availableRoutes);
+            } else {
+                $message .= "No routes registered";
+            }
+            throw new \Exception($message);
         }
         
         // Execute middleware

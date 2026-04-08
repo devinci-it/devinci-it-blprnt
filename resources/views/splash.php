@@ -129,7 +129,7 @@ $env = getenv('APP_ENV') ?: 'local';
 <div class="logo-glow"></div>
 
 <main class="splash">
-	<img src="/logo.svg" alt="Blprnt Logo" class="logo">
+	<img src="/graphics.svg" alt="Blprnt Logo" class="logo">
 
 	<h1 class="title">Blprnt is ready</h1>
 

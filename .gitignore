@@ -2,3 +2,9 @@ vendor
 **/vendor/*
 .env
 .github/agents/php-doc-lint.agent.md
+test/**
+**/validate-**
+app/
+CONTAINER_REFACTORING_SUMMARY.md
+docs/wiki/Architecture/ServiceContainer.md
+docs/examples/ServiceContainerExample.php

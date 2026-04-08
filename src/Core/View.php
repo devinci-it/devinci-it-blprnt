@@ -45,14 +45,55 @@ class View
     /**
      * Render a view with optional data and merged static assets
      *
+     * This method handles view rendering with data injection and optional
+     * per-render CSS/JS files. CSS/JS files passed here are automatically
+     * registered with the View so they appear in the layout.
+     *
      * @param string $view View file name (without extension)
      * @param array<string, mixed> $data Data to inject into view
-     * @param array<string> $css Additional CSS file paths for this render
-     * @param array<string|array> $js Additional JS file paths for this render (can be string or array with 'path' and 'defer' keys)
+     * @param array<string> $css Additional CSS file paths to register for this render
+     * @param array<string|array> $js Additional JS file paths to register for this render
+     *                               Can be strings or arrays with 'path' and 'defer' keys
      * @return void
+     *
+     * @example
+     * View::render('dashboard', [
+     *     'title' => 'Dashboard',
+     *     'items' => $items
+     * ], [
+     *     'assets/css/dashboard.css'
+     * ], [
+     *     'assets/js/dashboard.js',
+     *     ['path' => 'assets/js/analytics.js', 'defer' => true]
+     * ]);
      */
     public static function render($view, $data = [], $css = [], $js = [])
     {
+        // Register CSS files
+        if (!empty($css)) {
+            foreach ($css as $cssFile) {
+                self::addCss($cssFile);
+            }
+        }
+
+        // Register JS files
+        if (!empty($js)) {
+            foreach ($js as $jsFile) {
+                if (is_array($jsFile)) {
+                    // Format: ['path' => '...', 'defer' => true/false]
+                    $path = $jsFile['path'] ?? null;
+                    $defer = $jsFile['defer'] ?? true;
+                    if ($path !== null) {
+                        self::addJs($path, $defer);
+                    }
+                } else {
+                    // Simple string path, default defer=true
+                    self::addJs($jsFile, true);
+                }
+            }
+        }
+
+        // Render the view
         extract($data);
         ob_start();
         require self::$basePath . $view . '.php';

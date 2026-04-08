@@ -11,14 +11,17 @@
  * 1. Load dependencies (Composer)
  * 2. Load environment variables
  * 3. Register error handling
- * 4. Initialize core services (Router, View)
- * 5. Load application routes
- * 6. Pass request through the Kernel
- * 7. Output the response
+ * 4. Initialize service container
+ * 5. Register core services (Router, View)
+ * 6. Load application helpers
+ * 7. Load application routes
+ * 8. Pass request through the Kernel
+ * 9. Output the response
  */
 
 require __DIR__ . '/../vendor/autoload.php';
 
+use DevinciIT\Blprnt\Core\App;
 use DevinciIT\Blprnt\Core\Router;
 use DevinciIT\Blprnt\Core\View;
 use DevinciIT\Blprnt\Core\ErrorHandler;
@@ -48,35 +51,77 @@ Dotenv\Dotenv::createImmutable(__DIR__ . '/../')->load();
 ErrorHandler::register();
 
 /* --------------------------------------------------------------------------
+ SERVICE CONTAINER
+ --------------------------------------------------------------------------
+
+ Initialize the application service container (singleton pattern)
+ This is the central hub for all service registration and resolution
+-------------------------------------------------------------------------- */
+$container = App::getInstance();
+
+/* --------------------------------------------------------------------------
  CORE SERVICES
  --------------------------------------------------------------------------
 
- Router → Handles HTTP routing
- View   → Handles template rendering
+ Register core services in the container:
+ - Router    → Handles HTTP routing (singleton - same instance always)
+
+ Services are resolved lazily (when requested) via closures.
+ Router is cached to ensure routes persist across multiple container calls.
 -------------------------------------------------------------------------- */
-$router = new Router();
+// Cache router instance to ensure same instance on repeated calls
+$router = null;
+$container->bind('router', function () use (&$router) {
+    if ($router === null) {
+        $router = new Router();
+    }
+    return $router;
+});
+
+/* --------------------------------------------------------------------------
+ VIEW Edit routes/web.php to get started 
+ --------------------------------------------------------------------------
+ Initialize the static View with base path for view files.
+ View uses static methods and is not bound to the container since it's
+ a utility class with static state management.
+-------------------------------------------------------------------------- */
 View::init(__DIR__ . '/../app/Views');
+
+/* --------------------------------------------------------------------------
+ HELPERS
+ --------------------------------------------------------------------------
+
+ Load all global helper functions available to the application
+ This makes app() and view() available globally
+-------------------------------------------------------------------------- */
+require __DIR__ . '/helpers.php';
 
 /* --------------------------------------------------------------------------
  ROUTES
  --------------------------------------------------------------------------
 
- Register application routes (web + API)
+ Load application routes (web + API)
+ 
+ The Router load() method accepts optional paths:
+ - router()->load();                   // Defaults to routes/web.php
+ - router()->load($customPath);        // Use custom route file
 -------------------------------------------------------------------------- */
-require __DIR__ . '/../routes/web.php';
-require __DIR__ . '/../routes/api.php';
+router()
+    ->load(__DIR__ . '/../routes/web.php')
+    ->load(__DIR__ . '/../routes/api.php');
 
 /* --------------------------------------------------------------------------
  REQUEST LIFECYCLE
  --------------------------------------------------------------------------
 
  The Kernel processes the request:
+ - Retrieves router from container
  - Matches route
  - Resolves controller
  - Runs middleware
  - Returns response
 -------------------------------------------------------------------------- */
-$kernel = new Kernel($router);
+$kernel = new Kernel($container->make('router'));
 
 /* --------------------------------------------------------------------------
  RESPONSE

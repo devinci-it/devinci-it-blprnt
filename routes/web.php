@@ -81,6 +81,9 @@
  * --------------------------------------------------------------------------
  */
 
+// Make router available from parent scope
+global $router;
+
 
 
 

@@ -1,6 +1,5 @@
 {
   "name": "devinci-it/blprnt",
-  "version": "1.0.0",
   "description": "A minimal, extensible PHP micro-framework (Blueprint for modern apps)",
   "type": "composer-plugin",
   "autoload": {
