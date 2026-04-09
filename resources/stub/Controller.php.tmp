@@ -2,13 +2,13 @@
 namespace {{ namespace }};
 
 use DevinciIT\Blprnt\Core\Controller;
-use DevinciIT\Blprnt\Core\View;
 
 class {{ class }} extends Controller
 {
     public function index()
     {
-        return View::render('{{ view }}', [
+        // TODO: Use Services to handle business logic
+        return view('{{ view }}', [
             'title' => '{{ title }}'
         ]);
     }
