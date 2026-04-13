@@ -53,7 +53,8 @@ class ErrorHandler
         $debugViewPath = self::resolveDebugViewPath();
 
         if ($debugViewPath !== null) {
-            require $debugViewPath;
+            View::render('errors/debug', [], [], []);
+            // require $debugViewPath;
             return;
         }
 
@@ -132,7 +133,7 @@ class ErrorHandler
     {
         $paths = [
             __DIR__ . '/../../app/Views/errors/debug.php',
-            __DIR__ . '/../../vendor/devinci-it/blprnt/app/Views/errors/debug.php',
+            __DIR__ . '/../../vendor/devinci-it/blprnt/resources/views/debug.php',
         ];
 
         foreach ($paths as $path) {
