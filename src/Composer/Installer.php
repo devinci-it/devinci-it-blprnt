@@ -91,6 +91,7 @@ class Installer
                 'public/index.php' => 'public/index.php',
                 'resources/logo.svg' => 'public/logo.svg',
                 'resources/favicon.svg' => 'public/favicon.svg',
+                'public/assets/css/http-error.css' => 'public/assets/css/http-error.css',
             ],
         ];
     }

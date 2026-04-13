@@ -3,6 +3,7 @@ namespace DevinciIT\Blprnt\Http;
 
 use DevinciIT\Blprnt\Core\Router;
 use DevinciIT\Blprnt\Core\Request;
+use DevinciIT\Blprnt\Core\ErrorHandler;
 
 class Kernel
 {
@@ -174,12 +175,18 @@ COMMANDS;
      */
     protected function handleException(\Throwable $e, Request $request)
     {
-        $statusCode = 500;
-        $message = $e->getMessage();
+        $statusCode = (int) $e->getCode();
+        if ($statusCode < 400 || $statusCode > 599) {
+            $statusCode = 500;
+        }
+
+        $safeMessage = ErrorHandler::isLocalDevelopment()
+            ? $e->getMessage()
+            : ErrorHandler::getHttpStatusText($statusCode);
 
         // CLI exceptions - write to STDERR
         if ($request->isCli()) {
-            fwrite(STDERR, "Error: {$message}\n");
+            fwrite(STDERR, "Error ({$statusCode}): {$safeMessage}\n");
             return null;
         }
 
@@ -189,13 +196,16 @@ COMMANDS;
             header('Content-Type: application/json');
             return json_encode([
                 'success' => false,
-                'error' => $message
+                'error' => $safeMessage
             ]);
         }
 
-        // Web exceptions - throw and let error handler deal with it
-        http_response_code($statusCode);
-        header('Content-Type: text/html; charset=utf-8');
-        throw $e;
+        // Web exceptions - local shows debug trace, production shows HTTP error page.
+        if (ErrorHandler::isLocalDevelopment()) {
+            throw $e;
+        }
+
+        ErrorHandler::renderHttpErrorPage($statusCode);
+        return null;
     }
 }

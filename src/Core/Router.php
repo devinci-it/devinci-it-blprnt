@@ -248,20 +248,39 @@ class Router
         }
 
         if (!$route) {
-            // Debug: show what routes are available
-            $availableRoutes = [];
-            foreach ($this->routes as $methodKey => $uriRoutes) {
-                foreach ($uriRoutes as $uriKey => $routeData) {
-                    $availableRoutes[] = "$methodKey $uriKey";
+            // Method exists for URI but method mismatch -> 405
+            $uriExistsWithDifferentMethod = false;
+            foreach ($this->routes as $registeredMethod => $uriRoutes) {
+                if ($registeredMethod !== $method && isset($uriRoutes[$uri])) {
+                    $uriExistsWithDifferentMethod = true;
+                    break;
                 }
             }
-            $message = "Route not found: $method $uri\n";
-            if ($availableRoutes) {
-                $message .= "Available routes: " . implode(", ", $availableRoutes);
-            } else {
-                $message .= "No routes registered";
+
+            if ($uriExistsWithDifferentMethod) {
+                throw new \RuntimeException('Method not allowed', 405);
             }
-            throw new \Exception($message);
+
+            // Local mode can include route details for debugging.
+            if (ErrorHandler::isLocalDevelopment()) {
+                $availableRoutes = [];
+                foreach ($this->routes as $methodKey => $uriRoutes) {
+                    foreach ($uriRoutes as $uriKey => $routeData) {
+                        $availableRoutes[] = "$methodKey $uriKey";
+                    }
+                }
+
+                $message = "Route not found: $method $uri\n";
+                if ($availableRoutes) {
+                    $message .= "Available routes: " . implode(", ", $availableRoutes);
+                } else {
+                    $message .= "No routes registered";
+                }
+
+                throw new \RuntimeException($message, 404);
+            }
+
+            throw new \RuntimeException('Not found', 404);
         }
         
         // Execute middleware - pass Request object to each middleware handler

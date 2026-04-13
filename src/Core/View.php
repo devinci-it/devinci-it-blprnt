@@ -40,6 +40,11 @@ class View
     protected static array $jsFiles = [];
 
     /**
+     * @var array<string, array<string>> Required data keys by view name
+     */
+    protected static array $expectedVariables = [];
+
+    /**
      * Initialize the View with base path and layout template
      *
      * @param string $basePath Base directory path for view files
@@ -50,6 +55,86 @@ class View
     {
         self::$basePath = rtrim($basePath, '/') . '/';
         self::$layout = $layout;
+    }
+
+    /**
+     * Check if View has been initialized
+     *
+     * @return bool
+     */
+    public static function isInitialized(): bool
+    {
+        return isset(self::$basePath, self::$layout);
+    }
+
+    /**
+     * Check if a view file exists
+     *
+     * @param string $view View file name (without extension)
+     * @return bool
+     */
+    public static function viewExists(string $view): bool
+    {
+        if (!self::isInitialized()) {
+            return false;
+        }
+
+        return file_exists(self::$basePath . $view . '.php');
+    }
+
+    /**
+     * Define required data keys for a view
+     *
+     * Controllers can register expected keys before render to fail fast with
+     * a clear message when required template data is missing.
+     *
+     * @param string $view View file name (without extension)
+     * @param array<string> $variables Required data keys for this view
+     * @return void
+     */
+    public static function setExpectedVariables(string $view, array $variables): void
+    {
+        $normalized = [];
+
+        foreach ($variables as $variable) {
+            if (!is_string($variable)) {
+                continue;
+            }
+
+            $variable = trim($variable);
+            if ($variable !== '') {
+                $normalized[] = $variable;
+            }
+        }
+
+        self::$expectedVariables[$view] = array_values(array_unique($normalized));
+    }
+
+    /**
+     * Get required data keys for a specific view
+     *
+     * @param string $view View file name (without extension)
+     * @return array<string>
+     */
+    public static function getExpectedVariables(string $view): array
+    {
+        return self::$expectedVariables[$view] ?? [];
+    }
+
+    /**
+     * Clear required data keys for one view or all views
+     *
+     * @param string|null $view View file name (without extension), or null for all
+     * @return void
+     */
+    public static function clearExpectedVariables(?string $view = null): void
+    {
+        if ($view === null) {
+            self::$expectedVariables = [];
+            return;
+        }
+
+        unset(self::$expectedVariables[$view]);
     }
 
     /**
@@ -129,6 +214,9 @@ class View
         $defaultCss = self::getCssFiles();
         $defaultJs = self::getJsFiles();
 
+        // Fail fast with a clear message if required template data is missing.
+        self::validateExpectedVariables($view, $data);
+
         // Render the view
         extract($data);
         ob_start();
@@ -138,6 +226,34 @@ class View
         // Make CSS/JS available to layout without needing View imports
         extract(compact('defaultCss', 'defaultJs', 'content'));
         require self::$basePath . self::$layout;
+    }
+
+    /**
+     * Validate required view data keys before rendering
+     *
+     * @param string $view View file name (without extension)
+     * @param array<string, mixed> $data Data passed to render()
+     * @return void
+     */
+    private static function validateExpectedVariables(string $view, array $data): void
+    {
+        $required = self::getExpectedVariables($view);
+        if (empty($required)) {
+            return;
+        }
+
+        $missing = [];
+        foreach ($required as $key) {
+            if (!array_key_exists($key, $data)) {
+                $missing[] = $key;
+            }
+        }
+
+        if (!empty($missing)) {
+            throw new \InvalidArgumentException(
+                "Missing required view data for '{$view}': " . implode(', ', $missing)
+            );
+        }
     }
 
     /**

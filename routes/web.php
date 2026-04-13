@@ -88,3 +88,20 @@ global $router;
 
 
 $router->get('/', [App\Controllers\SplashController::class, 'index']);
+
+// Demo endpoint: /demo/http-error?code=404&message=Not%20Found
+$router->get('/demo/http-error', function ($request) {
+	$code = (int) $request->query('code', 500);
+	$message = (string) $request->query('message', 'Demo HTTP error');
+
+	if ($code < 400 || $code > 599) {
+		$code = 500;
+	}
+
+	$throwFile = __DIR__ . '/../test/demo/http-error/throw.php';
+	if (!is_file($throwFile)) {
+		throw new \RuntimeException('Error demo file not found', 500);
+	}
+
+	require $throwFile;
+});
