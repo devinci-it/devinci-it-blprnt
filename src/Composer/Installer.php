@@ -121,20 +121,6 @@ class Installer
      * Publishes project skeleton, resources, and compiled CSS outputs.
      */
     public static function publishForProject(string $projectRoot, string $packageRoot, ?IOInterface $io = null): void
-            // Publish custom file copies
-            if (isset($config['custom'])) {
-                foreach ($config['custom'] as $srcRel => $destRel) {
-                    $src = rtrim($projectRoot, '/') . '/' . $srcRel;
-                    $dest = rtrim($projectRoot, '/') . '/' . $destRel;
-                    if (is_file($src) && !file_exists($dest)) {
-                        @mkdir(dirname($dest), 0755, true);
-                        @copy($src, $dest);
-                        if ($io !== null) {
-                            $io->write(sprintf('  <info>[blprnt]</info> Published %s from %s', $destRel, $srcRel));
-                        }
-                    }
-                }
-            }
     {
         if ($io !== null) {
             $io->write('');
@@ -179,6 +165,21 @@ class Installer
         // Publish resource directories
         foreach ($config['resources'] as $source => $destination) {
             self::publishResourceDirectory($projectRoot, $packageRoot, $source, $destination, $io);
+        }
+
+        // Publish custom file copies
+        if (isset($config['custom'])) {
+            foreach ($config['custom'] as $srcRel => $destRel) {
+                $src = rtrim($packageRoot, '/') . '/' . $srcRel;
+                $dest = rtrim($projectRoot, '/') . '/' . $destRel;
+                if (is_file($src) && !file_exists($dest)) {
+                    @mkdir(dirname($dest), 0755, true);
+                    @copy($src, $dest);
+                    if ($io !== null) {
+                        $io->write(sprintf('  <info>[blprnt]</info> Published %s from %s', $destRel, $srcRel));
+                    }
+                }
+            }
         }
 
         // Create empty scaffold directories

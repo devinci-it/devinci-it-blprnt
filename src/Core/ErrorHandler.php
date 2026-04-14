@@ -51,7 +51,7 @@ class ErrorHandler
     public static function renderLocalError(): void
     {
         $debugViewPath = self::resolveDebugViewPath();
-
+        
         if ($debugViewPath !== null) {
             View::render('errors/debug', [], [], []);
             // require $debugViewPath;
