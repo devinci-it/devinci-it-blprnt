@@ -22,10 +22,10 @@
   ],
   "scripts": {
     "post-install-cmd": [
-      "DevinciIT\\Blprnt\\Composer\\Installer::postInstall"
+      "DevinciIT\\Blprnt\\Composer\\BlprntInstaller::install"
     ],
     "post-update-cmd": [
-      "DevinciIT\\Blprnt\\Composer\\Installer::postUpdate"
+      "DevinciIT\\Blprnt\\Composer\\BlprntInstaller::install"
     ]
   }
 }

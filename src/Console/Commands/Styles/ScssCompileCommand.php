@@ -35,7 +35,7 @@ class ScssCompileCommand extends Command
 
         $input = (string) ($this->getOption('input') ?: 'resources/scss/app.scss');
         $output = (string) ($this->getOption('output') ?: 'public/css/app.css');
-        $style = strtolower((string) ($this->getOption('style') ?: 'compressed'));
+        $style = strtolower((string) ($this->getOption('style') ?: 'expanded'));
 
         if (!in_array($style, ['compressed', 'expanded'], true)) {
             fwrite(STDERR, "Invalid style. Use 'compressed' or 'expanded'.\n");

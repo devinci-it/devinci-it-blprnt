@@ -11,8 +11,10 @@ $line = $isThrowable ? $exception->getLine() : null;
 $type = $isThrowable ? get_class($exception) : 'Exception';
 
 /** Escape helper */
-function e($value): string {
-	return htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8');
+if (!function_exists('e')) { 
+	function e($value): string {
+		return htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8');
+	}
 }
 
 $fileLine = $file && $line ? "{$file}:{$line}" : null;

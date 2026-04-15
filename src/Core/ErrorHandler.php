@@ -142,7 +142,7 @@ class ErrorHandler
             }
         }
 
-        return null;
+        return true;
     }
 
     public static function getHttpStatusText(int $statusCode): string

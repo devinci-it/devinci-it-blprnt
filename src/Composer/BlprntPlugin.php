@@ -1,148 +1,117 @@
 <?php
+
 namespace DevinciIT\Blprnt\Composer;
 
 use Composer\Composer;
 use Composer\EventDispatcher\EventSubscriberInterface;
 use Composer\Installer\PackageEvent;
 use Composer\Installer\PackageEvents;
-use Composer\Installer\Package\InstallOperation;
-use Composer\Installer\Package\UpdateOperation;
+use Composer\DependencyResolver\Operation\InstallOperation;
+use Composer\DependencyResolver\Operation\UpdateOperation;
 use Composer\IO\IOInterface;
 use Composer\Plugin\PluginInterface;
+use DevinciIT\Blprnt\Support\IOHelper;
 
-/**
- * Composer plugin that publishes Blprnt scaffolding when the package is installed or updated.
- */
 class BlprntPlugin implements PluginInterface, EventSubscriberInterface
 {
     private const PACKAGE_NAME = 'devinci-it/blprnt';
-    private ?Composer $composer = null;
-    private ?IOInterface $io = null;
 
-    /**
-     * Activates the plugin and runs a missing-skeleton check.
-     */
-    public function activate(Composer $composer, IOInterface $io): void
-    {
-        $this->composer = $composer;
-        $this->io = $io;
+    public function activate(Composer $composer, IOInterface $io): void {}
+    public function deactivate(Composer $composer, IOInterface $io): void {}
+    public function uninstall(Composer $composer, IOInterface $io): void {}
 
-        $this->publishIfNeeded($composer, $io);
-    }
+    /*
+    |--------------------------------------------------------------------------
+    | EVENT SUBSCRIPTION
+    |--------------------------------------------------------------------------
+    */
 
-    /**
-     * Composer plugin deactivation callback.
-     */
-    public function deactivate(Composer $composer, IOInterface $io): void
-    {
-        // No-op.
-    }
-
-    /**
-     * Composer plugin uninstall callback.
-     */
-    public function uninstall(Composer $composer, IOInterface $io): void
-    {
-        // No-op.
-    }
-
-    /**
-     * Registers package lifecycle events consumed by this plugin.
-     */
     public static function getSubscribedEvents(): array
     {
         return [
-            PackageEvents::POST_PACKAGE_INSTALL => 'onPostPackageInstall',
-            PackageEvents::POST_PACKAGE_UPDATE => 'onPostPackageUpdate',
+            PackageEvents::POST_PACKAGE_INSTALL => 'onPackageEvent',
+            PackageEvents::POST_PACKAGE_UPDATE  => 'onPackageEvent',
         ];
     }
 
-    /**
-     * Handles post-install for the target package.
-     */
-    public function onPostPackageInstall(PackageEvent $event): void
+    /*
+    |--------------------------------------------------------------------------
+    | MAIN EVENT HANDLER
+    |--------------------------------------------------------------------------
+    */
+
+    public function onPackageEvent(PackageEvent $event): void
     {
-        $operation = $event->getOperation();
+        $io = $event->getIO();
+        $helper = new IOHelper($io);
 
-        if (!($operation instanceof InstallOperation)) {
+        $this->debug($io, 'Blprnt plugin triggered');
+
+        $op = $event->getOperation();
+        $this->debug($io, 'Operation: ' . get_class($op));
+
+        $package = match (true) {
+            $op instanceof InstallOperation => $op->getPackage(),
+            $op instanceof UpdateOperation  => $op->getTargetPackage(),
+            default => null,
+        };
+
+        if (!$package) {
+            $this->debug($io, 'No package resolved from operation');
             return;
         }
 
-        $package = $operation->getPackage();
+        $this->debug($io, 'Package detected: ' . $package->getName());
+
         if ($package->getName() !== self::PACKAGE_NAME) {
+            $this->debug($io, 'Skipping (not blprnt package)');
             return;
         }
 
-        $this->publish($event->getComposer(), $event->getIO());
+        $this->debug($io, 'Starting installer...');
+
+        $this->runInstaller($event->getComposer(), $io);
     }
 
-    /**
-     * Handles post-update for the target package.
-     */
-    public function onPostPackageUpdate(PackageEvent $event): void
-    {
-        $operation = $event->getOperation();
+    /*
+    |--------------------------------------------------------------------------
+    | INSTALLER ENTRY POINT
+    |--------------------------------------------------------------------------
+    */
 
-        if (!($operation instanceof UpdateOperation)) {
-            return;
-        }
-
-        $package = $operation->getTargetPackage();
-        if ($package->getName() !== self::PACKAGE_NAME) {
-            return;
-        }
-
-        $this->publish($event->getComposer(), $event->getIO());
-    }
-
-    /**
-     * Executes the installer publishing flow.
-     */
-    private function publish(Composer $composer, IOInterface $io): void
+    private function runInstaller(Composer $composer, IOInterface $io): void
     {
         $projectRoot = dirname($composer->getConfig()->get('vendor-dir'));
-        $packageRoot = Installer::packageRootFrom(__DIR__);
+        $packageRoot = $projectRoot . '/vendor/devinci-it/blprnt';
 
-        
-        Installer::publishForProject($projectRoot, $packageRoot, $io);
+        $this->debug($io, "Project root: {$projectRoot}");
+        $this->debug($io, "Package root: {$packageRoot}");
+
+        $installer = new BlprntInstaller(
+            $projectRoot,
+            $packageRoot,
+            new IOHelper($io)
+        );
+
+        $installer->runInstall(
+            new \Composer\Script\Event(
+                'blprnt-install',
+                $composer,
+                $io
+            )
+        );
+
+        $this->debug($io, 'Installer finished');
     }
 
-    /**
-     * Publishes bootstrap files when required project skeleton pieces are missing.
-     */
-    private function publishIfNeeded(Composer $composer, IOInterface $io): void
+    /*
+    |--------------------------------------------------------------------------
+    | DEBUG HELPER
+    |--------------------------------------------------------------------------
+    */
+
+    private function debug(IOInterface $io, string $message): void
     {
-        $projectRoot = dirname($composer->getConfig()->get('vendor-dir'));
-        $missingSkeleton = false;
-
-        // Check core directories
-        foreach (['app', 'bootstrap', 'routes', 'config', '.env', 'blprnt'] as $entry) {
-            if (!file_exists($projectRoot . '/' . $entry)) {
-                $missingSkeleton = true;
-                break;
-            }
-        }
-
-        // Check essential app/Views and app/Controllers directories
-        if (!is_dir($projectRoot . '/app/Views') || !is_dir($projectRoot . '/app/Controllers')) {
-            $missingSkeleton = true;
-        }
-
-        // Check public entry point
-        if (!file_exists($projectRoot . '/public/index.php')) {
-            $missingSkeleton = true;
-        }
-
-        // Check resource directories
-        foreach (['resources/views', 'resources/scss', 'resources/js'] as $dir) {
-            if (!is_dir($projectRoot . '/' . $dir)) {
-                $missingSkeleton = true;
-                break;
-            }
-        }
-
-        if ($missingSkeleton) {
-            $this->publish($composer, $io);
-        }
+        $io->write('<comment>[blprnt:debug]</comment> ' . $message);
     }
 }

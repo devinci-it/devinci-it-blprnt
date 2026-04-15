@@ -33,7 +33,6 @@ $env = getenv('APP_ENV') ?: 'local';
 		}
 
 		.logo {
-			width: 84px;
 			height: 84px;
 			margin-bottom: 1.2rem;
 			filter: drop-shadow(0 12px 30px rgba(0,0,0,0.5));
