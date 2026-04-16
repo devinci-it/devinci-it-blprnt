@@ -1,314 +1,261 @@
 <?php
+
 namespace DevinciIT\Blprnt\Core;
 
-/**
- * Router class for managing application routes
- *
- * Supports both controller/method actions and closures for route handlers.
- * Includes middleware support and route grouping capabilities.
- */
+use DevinciIT\Blprnt\Core\Route;
+
 class Router
 {
-    /**
-     * @var array Registered routes organized by HTTP method and URI
-     */
-    protected $routes = [];
+    protected array $routes = [];
 
-    /**
-     * @var array Middleware to apply to all routes in a group
-     */
-    protected $groupMiddleware = [];
+    protected array $groupMiddleware = [];
 
-    /**
-     * @var string URI prefix to apply to all routes in a group
-     */
-    protected $groupPrefix = '';
+    protected string $groupPrefix = '';
 
-    /**
-     * Create a route group with shared middleware and/or prefix
-     *
-     * @param array $opts Group options including 'middleware' and 'prefix' keys
-     * @param callable $callback Callback function to register routes within the group
-     * @return void
-     *
-     * @example
-     * $router->group(['prefix' => '/api', 'middleware' => [ApiMiddleware::class]], function ($router) {
-     *     $router->get('/posts', [PostController::class, 'index']);
-     * });
-     */
-    public function group($opts, $callback)
+    protected array $globalMiddleware = [];
+
+    /*
+    |--------------------------------------------------------------------------
+    | GLOBAL MIDDLEWARE (NEW)
+    |--------------------------------------------------------------------------
+    */
+    public function middleware(array $middleware): self
     {
-        $this->groupMiddleware = $opts['middleware'] ?? [];
-        $this->groupPrefix = $opts['prefix'] ?? '';
-        $callback($this);
-        $this->groupMiddleware = [];
-        $this->groupPrefix = '';
-    }
-
-    /**
-     * Add a route to the routes collection
-     *
-     * @param string $method HTTP method (GET, POST, PUT, PATCH, DELETE)
-     * @param string $uri The URI path for the route
-     * @param callable|array $action Either a closure or array [controller, method]
-     * @param array $middleware Middleware to apply to this route
-     * @return void
-     */
-    protected function addRoute($method, $uri, $action, $middleware = [])
-    {
-        // Apply group prefix if present
-        $fullUri = $this->groupPrefix . $uri;
-
-        $this->routes[$method][$fullUri] = [
-            'action' => $action,
-            'middleware' => array_merge($this->groupMiddleware, $middleware)
-        ];
-    }
-
-    /**
-     * Register a GET route
-     *
-     * @param string $uri The URI path for the route
-     * @param callable|array $action Either a closure or array [controller, method]
-     * @param array $middleware Middleware to apply to this route
-     * @return void
-     */
-    public function get($uri, $action, $middleware = [])
-    {
-        $this->addRoute('GET', $uri, $action, $middleware);
-    }
-
-    /**
-     * Register a POST route
-     *
-     * @param string $uri The URI path for the route
-     * @param callable|array $action Either a closure or array [controller, method]
-     * @param array $middleware Middleware to apply to this route
-     * @return void
-     */
-    public function post($uri, $action, $middleware = [])
-    {
-        $this->addRoute('POST', $uri, $action, $middleware);
-    }
-
-    /**
-     * Register a PUT route
-     *
-     * @param string $uri The URI path for the route
-     * @param callable|array $action Either a closure or array [controller, method]
-     * @param array $middleware Middleware to apply to this route
-     * @return void
-     */
-    public function put($uri, $action, $middleware = [])
-    {
-        $this->addRoute('PUT', $uri, $action, $middleware);
-    }
-
-    /**
-     * Register a PATCH route
-     *
-     * @param string $uri The URI path for the route
-     * @param callable|array $action Either a closure or array [controller, method]
-     * @param array $middleware Middleware to apply to this route
-     * @return void
-     */
-    public function patch($uri, $action, $middleware = [])
-    {
-        $this->addRoute('PATCH', $uri, $action, $middleware);
-    }
-
-    /**
-     * Register a DELETE route
-     *
-     * @param string $uri The URI path for the route
-     * @param callable|array $action Either a closure or array [controller, method]
-     * @param array $middleware Middleware to apply to this route
-     * @return void
-     */
-    public function delete($uri, $action, $middleware = [])
-    {
-        $this->addRoute('DELETE', $uri, $action, $middleware);
-    }
-
-    /**
-     * Load routes from a file
-     *
-     * The route file is loaded in a context where $router (this Router) is available,
-     * allowing routes to be registered via $router->get(), $router->post(), etc.
-     *
-     * Default path: routes/web.php relative to project root
-     *
-     * @param string|null $path Optional custom path to route file
-     *                           If null, defaults to PROJECT_ROOT/routes/web.php
-     *
-     * @example
-     * // Load default routes/web.php
-     * $router->load();
-     *
-     * // Load specific route file
-     * $router->load(__DIR__ . '/../routes/api.php');
-     * $router->load(__DIR__ . '/../routes/admin.php');
-     *
-     * @return $this For method chaining
-     */
-    public function load(?string $path = null): self
-    {
-        // If no path provided, default to routes/web.php relative to project root
-        if ($path === null) {
-            // Find project root by looking for vendor directory
-            $projectRoot = $this->findProjectRoot();
-            $path = $projectRoot . '/routes/web.php';
-        }
-
-        // Make $router available to the route file as both local and global variable
-        $router = $this;
-        $GLOBALS['router'] = $this;
-
-        // Load the route file in router context
-        if (file_exists($path)) {
-            require $path;
-        } else {
-            throw new \RuntimeException("Route file not found: {$path}");
-        }
+        $this->globalMiddleware = array_merge(
+            $this->globalMiddleware,
+            $middleware
+        );
 
         return $this;
     }
 
-    /**
-     * Find the project root directory
-     *
-     * Traverses up the directory tree looking for vendor directory
-     * or uses __DIR__ as fallback if in a different context
-     *
-     * @return string Absolute path to project root
-     */
-    protected function findProjectRoot(): string
+    /*
+    |--------------------------------------------------------------------------
+    | ROUTE GROUPS
+    |--------------------------------------------------------------------------
+    */
+    public function group(array $opts, callable $callback): void
     {
-        $dir = __DIR__;
-        
-        // Traverse up looking for vendor directory
-        while ($dir !== '/') {
-            if (is_dir($dir . '/vendor')) {
-                return $dir;
-            }
-            $dir = dirname($dir);
+        $previousMiddleware = $this->groupMiddleware;
+        $previousPrefix = $this->groupPrefix;
+
+        $this->groupMiddleware = $opts['middleware'] ?? [];
+        $this->groupPrefix = $opts['prefix'] ?? '';
+
+        $callback($this);
+
+        $this->groupMiddleware = $previousMiddleware;
+        $this->groupPrefix = $previousPrefix;
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | ROUTE REGISTRATION
+    |--------------------------------------------------------------------------
+    */
+    protected function addRoute(string $method, string $uri, $action, array $middleware = []): Route
+    {
+        $fullUri = $this->groupPrefix . $uri;
+
+        $route = new Route(
+            $method,
+            $fullUri,
+            $action,
+            array_merge($this->groupMiddleware, $middleware)
+        );
+
+        $this->routes[$method][$fullUri] = $route;
+
+        return $route;
+    }
+
+    public function get(string $uri, $action, array $middleware = []): Route
+    {
+        return $this->addRoute('GET', $uri, $action, $middleware);
+    }
+
+    public function post(string $uri, $action, array $middleware = []): Route
+    {
+        return $this->addRoute('POST', $uri, $action, $middleware);
+    }
+
+    public function put(string $uri, $action, array $middleware = []): Route
+    {
+        return $this->addRoute('PUT', $uri, $action, $middleware);
+    }
+
+    public function patch(string $uri, $action, array $middleware = []): Route
+    {
+        return $this->addRoute('PATCH', $uri, $action, $middleware);
+    }
+
+    public function delete(string $uri, $action, array $middleware = []): Route
+    {
+        return $this->addRoute('DELETE', $uri, $action, $middleware);
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | LOAD ROUTES FILE
+    |--------------------------------------------------------------------------
+    */
+    public function load(?string $path = null): self
+    {
+        if ($path === null) {
+            $root = $this->findProjectRoot();
+            $path = $root . '/routes/web.php';
         }
-        
-        // Fallback: return two levels up from src/Core
-        return dirname(dirname(__DIR__));
+
+        if (!file_exists($path)) {
+            throw new \RuntimeException("Route file not found: {$path}");
+        }
+
+        $router = $this;
+        $GLOBALS['router'] = $this;
+
+        require $path;
+
+        return $this;
     }
 
-    /**
-     * Check if an action is a closure or callable function
-     *
-     * @param mixed $action The action to check
-     * @return bool True if the action is a closure or callable
-     */
-    protected function isClosure($action): bool
-    {
-        return $action instanceof \Closure || is_callable($action);
-    }
-
-    /**
-     * Dispatch a request to the appropriate route handler
-     *
-     * Supports both closure-based and controller-based actions.
-     * Executes all registered middleware before calling the handler.
-     *
-     * @param string $uri The URI to dispatch
-     * @param string $method The HTTP method (GET, POST, etc.)
-     * @return mixed The result from the route handler
-     * @throws \Exception If the route is not found
-     */
-    public function dispatch($uri, $method, $request = null)
+    /*
+    |--------------------------------------------------------------------------
+    | DISPATCH (FULL FIXED PIPELINE)
+    |--------------------------------------------------------------------------
+    */
+    public function dispatch(string $uri, string $method, $request = null)
     {
         $route = null;
         $params = [];
 
-        // Try exact match first
+        /*
+        |--------------------------------------------------------------------------
+        | 1. MATCH ROUTE
+        |--------------------------------------------------------------------------
+        */
+
         if (isset($this->routes[$method][$uri])) {
             $route = $this->routes[$method][$uri];
         } else {
-            // Try dynamic parameter matching
-            foreach ($this->routes[$method] ?? [] as $routePattern => $routeData) {
-                $pattern = preg_replace('/\{([^}]+)\}/', '(?P<\1>[^/]+)', $routePattern);
-                $pattern = "#^{$pattern}$#";
-                
-                if (preg_match($pattern, $uri, $matches)) {
-                    $route = $routeData;
-                    // Extract named parameters
+            foreach ($this->routes[$method] ?? [] as $pattern => $r) {
+
+                $regex = preg_replace(
+                    '/\{([^}]+)\}/',
+                    '(?P<\1>[^/]+)',
+                    $pattern
+                );
+
+                $regex = "#^{$regex}$#";
+
+                if (preg_match($regex, $uri, $matches)) {
+                    $route = $r;
+
                     foreach ($matches as $key => $value) {
                         if (!is_numeric($key)) {
                             $params[$key] = $value;
                         }
                     }
+
                     break;
                 }
             }
         }
 
         if (!$route) {
-            // Method exists for URI but method mismatch -> 405
-            $uriExistsWithDifferentMethod = false;
-            foreach ($this->routes as $registeredMethod => $uriRoutes) {
-                if ($registeredMethod !== $method && isset($uriRoutes[$uri])) {
-                    $uriExistsWithDifferentMethod = true;
-                    break;
-                }
+            throw new \RuntimeException("Route not found: {$method} {$uri}", 404);
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | 2. BUILD CONTROLLER EXECUTOR
+        |--------------------------------------------------------------------------
+        */
+
+        $controllerExecutor = function ($request) use ($route, $params) {
+
+            if ($route->action instanceof \Closure) {
+                return ($route->action)($request, ...array_values($params));
             }
 
-            if ($uriExistsWithDifferentMethod) {
-                throw new \RuntimeException('Method not allowed', 405);
+            if (is_array($route->action)) {
+                [$controller, $methodName] = $route->action;
+
+                $instance = new $controller();
+
+                return $instance->$methodName(
+                    $request,
+                    ...array_values($params)
+                );
             }
 
-            // Local mode can include route details for debugging.
-            if (ErrorHandler::isLocalDevelopment()) {
-                $availableRoutes = [];
-                foreach ($this->routes as $methodKey => $uriRoutes) {
-                    foreach ($uriRoutes as $uriKey => $routeData) {
-                        $availableRoutes[] = "$methodKey $uriKey";
+            throw new \RuntimeException("Invalid route action type");
+        };
+
+        /*
+        |--------------------------------------------------------------------------
+        | 3. BUILD FULL MIDDLEWARE STACK
+        |--------------------------------------------------------------------------
+        */
+
+        $middlewareStack = array_merge(
+            $this->globalMiddleware,
+            $route->middleware ?? []
+        );
+
+        $middlewareStack = array_reverse($middlewareStack);
+
+        $pipeline = array_reduce(
+            $middlewareStack,
+            function ($next, $middleware) {
+
+                return function ($request) use ($next, $middleware) {
+
+                    $instance = is_string($middleware)
+                        ? new $middleware()
+                        : $middleware;
+
+                    if (!method_exists($instance, 'handle')) {
+                        throw new \RuntimeException(
+                            "Invalid middleware: " . get_class($instance)
+                        );
                     }
-                }
 
-                $message = "Route not found: $method $uri\n";
-                if ($availableRoutes) {
-                    $message .= "Available routes: " . implode(", ", $availableRoutes);
-                } else {
-                    $message .= "No routes registered";
-                }
+                    return $instance->handle($request, $next);
+                };
+            },
+            $controllerExecutor
+        );
 
-                throw new \RuntimeException($message, 404);
-            }
+        /*
+        |--------------------------------------------------------------------------
+        | 4. EXECUTE PIPELINE
+        |--------------------------------------------------------------------------
+        */
 
-            throw new \RuntimeException('Not found', 404);
-        }
-        
-        // Execute middleware - pass Request object to each middleware handler
-        foreach ($route['middleware'] as $mw) {
-            (new $mw)->handle($request);
-        }
-        
-        // Handle closure-based action
-        if ($this->isClosure($route['action'])) {
-            return call_user_func($route['action'], $request, ...$params);
-        }
-        
-        // Handle controller/method action
-        [$controller, $actionMethod] = $route['action'];
-        $controller_instance = new $controller();
-        
-        // Pass Request object and route parameters
-        $paramValues = array_values($params);
-        return $controller_instance->$actionMethod($request, ...$paramValues);
+        return $pipeline($request);
     }
 
-    /**
-     * Get all registered routes
-     *
-     * @return array All registered routes organized by method
-     */
+    /*
+    |--------------------------------------------------------------------------
+    | HELPERS
+    |--------------------------------------------------------------------------
+    */
     public function getRoutes(): array
     {
         return $this->routes;
+    }
+
+    protected function findProjectRoot(): string
+    {
+        $dir = __DIR__;
+
+        while ($dir !== '/') {
+            if (is_dir($dir . '/vendor')) {
+                return $dir;
+            }
+            $dir = dirname($dir);
+        }
+
+        return dirname(dirname(__DIR__));
     }
 }

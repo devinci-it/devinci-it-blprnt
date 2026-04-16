@@ -25,7 +25,7 @@ use DevinciIT\Blprnt\Core\HttpBootstrap;
 use DevinciIT\Blprnt\Core\Request;
 use DevinciIT\Blprnt\Core\Router;
 use DevinciIT\Blprnt\Http\Kernel;
-
+use DevinciIT\Blprnt\Support\Session;
 /*
 |--------------------------------------------------------------------------
 | Build Application
@@ -51,6 +51,7 @@ use DevinciIT\Blprnt\Http\Kernel;
 |
 */
 
+Session::start();
 $bootstrap = HttpBootstrap::builder(__DIR__ . '/..')
     // ->withView(__DIR__ . '/../resources/views')
     // ->withoutHelpers()

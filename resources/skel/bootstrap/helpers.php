@@ -239,3 +239,38 @@ if (!function_exists('set_default_assets')) {
         }
     }
 }
+
+/*
+    * ===========================================================================
+    * Authentication Helpers
+    * ===========================================================================
+    *
+    * These helpers provide convenient access to authentication state and user info.
+    * They rely on the global variables set by the Auth class during login/logout.
+    *
+    * Available helpers:
+    * - auth() - Get auth state and user info
+    */
+
+if (!function_exists('auth')) {
+    function auth()
+    {
+        return new class {
+            public function check(): bool
+            {
+                return $GLOBALS['auth_check'] ?? false;
+            }
+
+            public function user(): ?array
+            {
+                return $GLOBALS['auth_user'] ?? null;
+            }
+        };
+    }
+}
+if (!function_exists('redirect')) {
+    function redirect($url) {
+        header('Location: ' . $url);
+        exit;
+    }
+}

@@ -2,6 +2,9 @@
 use DevinciIT\Blprnt\Core\ErrorHandler;
 
 try {
+	// Start session early
+	session_start();
+
 	require __DIR__ . '/../bootstrap/app.php';
 } catch (Throwable $throwable) {
 	ErrorHandler::storeThrowable($throwable);

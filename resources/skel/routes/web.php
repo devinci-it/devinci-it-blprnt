@@ -105,3 +105,43 @@ $router->get('/demo/http-error', function ($request) {
 
 	require $throwFile;
 });
+
+
+// AUTH ROUTES
+$router->post('/login', [App\Controllers\AuthController::class, 'login']);
+$router->post('/logout', [App\Controllers\AuthController::class, 'logout']);
+$router->get('/login', [App\Controllers\AuthController::class, 'index']);
+
+// API endpoint for login
+$router->post('/api/login', [App\Controllers\AuthController::class, 'apiLogin']);
+
+/*
+ Protected admin route example (uncomment to use)
+
+$router->group(['middleware' => [AuthMiddleware::class]], function($r) {
+	$r->get('/admin', [AdminController::class, 'index']);
+});
+
+non closure gated route example:
+*/
+
+use DevinciIT\Blprnt\Middleware\AuthMiddleware;
+use App\Controllers\AdminController;
+use DevinciIT\Blprnt\Auth\Auth;
+use DevinciIT\Blprnt\Middleware\AuthGuard;
+use DevinciIT\Blprnt\Middleware\GuestGuard;
+
+$router->get('/admin', [AdminController::class, 'index'], [AuthGuard::class]);
+$router->get('/login', [App\Controllers\AuthController::class, 'index'], [GuestGuard::class]);
+$router->get('/logout', [App\Controllers\AuthController::class, 'logout'], [AuthGuard::class]);
+// Example: pipeline usage for /admin
+use DevinciIT\Blprnt\Core\MiddlewarePipeline;
+
+$router->get('/admin', function ($request) {
+    $pipeline = new MiddlewarePipeline([
+        \DevinciIT\Blprnt\Middleware\AuthGuard::class
+    ]);
+    return $pipeline->then(function ($request) {
+        return (new AdminController())->index($request);
+    })($request);
+});

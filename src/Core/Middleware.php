@@ -1,7 +1,8 @@
 <?php
-namespace DevinciIT\Blprnt\Core;
+
+namespace DevinciIT\Blprnt\Http;
 
 interface Middleware
 {
-    public function handle();
+    public function handle(array $request, callable $next);
 }
