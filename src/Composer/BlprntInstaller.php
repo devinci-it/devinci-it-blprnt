@@ -40,7 +40,17 @@ class BlprntInstaller extends Installer
         | App directory
         |--------------------------------------------------------------------------
         */
-        $this->dir('resources/skel/app', 'app');
+        $this->io->hr();
+        $this->io()->accent('Publishing Assets...');
+    
+        $this->io()->info('Publishing app directory structure...');
+        $this->dir('resources/skel/app/Controllers', 'app/Controllers');
+        $this->dir('resources/skel/app/Views/auth', 'app/Views/auth');
+        $this->dir('resources/skel/app/Views/errors', 'app/Views/errors');
+        $this->dir('resources/skel/app/Views/layout', 'app/Views/layout');
+
+
+        $this->io->hr();
 
         /*
         |--------------------------------------------------------------------------

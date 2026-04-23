@@ -10,6 +10,10 @@ class HelloWorldCommand extends Command
 
     public function handle(array $args = [])
     {
-        echo "Hello, World!\n";
+    newLine();
+    hr();
+    accent('Hello, World!');
+    hr();
+    
     }
 }
