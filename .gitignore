@@ -1,6 +1,12 @@
 vendor
 **/vendor/*
+
 .env
+.app/
+app
+.bootstrap/
+bootstrap
+
 .github/agents/php-doc-lint.agent.md
 test/**
 **/validate-**
