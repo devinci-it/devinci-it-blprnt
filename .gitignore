@@ -6,6 +6,12 @@ vendor
 app
 .bootstrap/
 bootstrap
+./public/
+public
+storage/
+logs/
+data/
+cache/
 
 .github/agents/php-doc-lint.agent.md
 test/**
