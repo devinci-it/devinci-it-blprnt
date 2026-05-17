@@ -37,6 +37,160 @@ abstract class Installer
         $this->after();
     }
 
+    public static function publishForProject(string $projectRoot, string $packageRoot, ?IOHelper $io = null, bool $force = false): void
+    {
+        $installer = new class($projectRoot, $packageRoot, $io) extends Installer {
+            protected function install(): void {}
+        };
+
+        $output = $installer->io();
+
+        self::recurseCopy(
+            $installer->resolvePackage($installer->normalizePackagePath('resources/skel/bootstrap')),
+            $installer->resolveProject($installer->normalizeProjectPath('bootstrap')),
+            $force,
+            $output
+        );
+        self::recurseCopy(
+            $installer->resolvePackage($installer->normalizePackagePath('resources/skel/routes')),
+            $installer->resolveProject($installer->normalizeProjectPath('routes')),
+            $force,
+            $output
+        );
+        self::recurseCopy(
+            $installer->resolvePackage($installer->normalizePackagePath('resources/skel/config')),
+            $installer->resolveProject($installer->normalizeProjectPath('config')),
+            $force,
+            $output
+        );
+
+        self::publishFile(
+            $installer->resolvePackage($installer->normalizePackagePath('resources/skel/.env.tmp')),
+            $installer->resolveProject($installer->normalizeProjectPath('.env')),
+            $force,
+            $output
+        );
+        self::publishFile(
+            $installer->resolvePackage($installer->normalizePackagePath('blprnt')),
+            $installer->resolveProject($installer->normalizeProjectPath('blprnt')),
+            $force,
+            $output
+        );
+
+        self::recurseCopy(
+            $installer->resolvePackage($installer->normalizePackagePath('resources/skel/views')),
+            $installer->resolveProject($installer->normalizeProjectPath('app/Views')),
+            $force,
+            $output
+        );
+        self::recurseCopy(
+            $installer->resolvePackage($installer->normalizePackagePath('resources/skel/app/Controllers')),
+            $installer->resolveProject($installer->normalizeProjectPath('app/Controllers')),
+            $force,
+            $output
+        );
+        self::recurseCopy(
+            $installer->resolvePackage($installer->normalizePackagePath('resources/skel/app/Views/auth')),
+            $installer->resolveProject($installer->normalizeProjectPath('app/Views/auth')),
+            $force,
+            $output
+        );
+        self::recurseCopy(
+            $installer->resolvePackage($installer->normalizePackagePath('resources/skel/app/Views/errors')),
+            $installer->resolveProject($installer->normalizeProjectPath('app/Views/errors')),
+            $force,
+            $output
+        );
+        self::recurseCopy(
+            $installer->resolvePackage($installer->normalizePackagePath('resources/skel/app/Views/layouts')),
+            $installer->resolveProject($installer->normalizeProjectPath('app/Views/layouts')),
+            $force,
+            $output
+        );
+
+        self::recurseCopy(
+            $installer->resolvePackage($installer->normalizePackagePath('resources/skel/public')),
+            $installer->resolveProject($installer->normalizeProjectPath('public')),
+            $force,
+            $output
+        );
+
+        self::publishFile(
+            $installer->resolvePackage($installer->normalizePackagePath('resources/logo.svg')),
+            $installer->resolveProject($installer->normalizeProjectPath('public/logo.svg')),
+            $force,
+            $output
+        );
+        self::publishFile(
+            $installer->resolvePackage($installer->normalizePackagePath('resources/favicon.svg')),
+            $installer->resolveProject($installer->normalizeProjectPath('public/favicon.svg')),
+            $force,
+            $output
+        );
+        self::publishFile(
+            $installer->resolvePackage($installer->normalizePackagePath('resources/img/graphics.svg')),
+            $installer->resolveProject($installer->normalizeProjectPath('public/graphics.svg')),
+            $force,
+            $output
+        );
+    }
+
+    public static function publishFile(string $src, string $dst, bool $force = false, ?IOHelper $io = null): void
+    {
+        $io ??= new IOHelper();
+
+        if (!is_file($src)) {
+            $io->error("Missing file: {$src}");
+            return;
+        }
+
+        if (file_exists($dst) && !$force) {
+            $io->warn("Skipped (exists): {$dst}");
+            return;
+        }
+
+        $exists = file_exists($dst);
+
+        @mkdir(dirname($dst), 0755, true);
+
+        if (!copy($src, $dst)) {
+            $io->error("Failed copy: {$dst}");
+            return;
+        }
+
+        if ($exists) {
+            $io->warn("Overwritten: {$dst}");
+            return;
+        }
+
+        $io->success("Copied: {$dst}");
+    }
+
+    public static function recurseCopy(string $src, string $dst, bool $force = false, ?IOHelper $io = null): void
+    {
+        $io ??= new IOHelper();
+
+        if (!is_dir($src)) {
+            $io->error("Missing directory: {$src}");
+            return;
+        }
+
+        @mkdir($dst, 0755, true);
+
+        foreach (scandir($src) as $file) {
+            if ($file === '.' || $file === '..') {
+                continue;
+            }
+
+            $from = "{$src}/{$file}";
+            $to = "{$dst}/{$file}";
+
+            is_dir($from)
+                ? self::recurseCopy($from, $to, $force, $io)
+                : self::publishFile($from, $to, $force, $io);
+        }
+    }
+
     abstract protected function install(): void;
 
     /*

@@ -15,7 +15,7 @@ class CreateSandBoxCommand extends Command
 
         $root = getcwd();
         $demoPath = $this->resolveDemoPath($root);
-        
+
 
         $this->ensureDirectory($demoPath);
         $this->writeComposerFile($demoPath, $root);
@@ -46,15 +46,17 @@ class CreateSandBoxCommand extends Command
 
     private function writeComposerFile(string $demoPath, string $root): void
     {
+        $projectRoot = realpath($root) ?: $root;
+
         $composer = [
             "name" => "blprnt/sandbox",
             "require" => [
-                "devinciit/blprnt" => "*"
+                "devinci-it/blprnt" => "*"
             ],
             "repositories" => [
                 [
                     "type" => "path",
-                    "url" => "..",
+                    "url" => $projectRoot,
                     "options" => [
                         "symlink" => true
                     ]
@@ -82,9 +84,21 @@ class CreateSandBoxCommand extends Command
     {
         info('Running composer install in ' . $demoPath . '...');
 
-        $cmd = "cd {$demoPath} && composer install";
-        $cmd = $this->sanitizeCommand($cmd);
-        passthru($cmd);
+        $originalCwd = getcwd();
+
+        if ($originalCwd === false) {
+            error('Unable to determine current working directory.');
+            return;
+        }
+
+        if (!@chdir($demoPath)) {
+            error('Unable to change directory to sandbox path: ' . $demoPath);
+            return;
+        }
+
+        passthru('composer install');
+
+        @chdir($originalCwd);
     }
 
     private function success(): void

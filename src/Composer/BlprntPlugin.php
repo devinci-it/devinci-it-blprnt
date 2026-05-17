@@ -43,7 +43,6 @@ class BlprntPlugin implements PluginInterface, EventSubscriberInterface
     public function onPackageEvent(PackageEvent $event): void
     {
         $io = $event->getIO();
-        $helper = new IOHelper($io);
 
         $this->debug($io, 'Blprnt plugin triggered');
 
@@ -93,13 +92,7 @@ class BlprntPlugin implements PluginInterface, EventSubscriberInterface
             new IOHelper($io)
         );
 
-        $installer->runInstall(
-            new \Composer\Script\Event(
-                'blprnt-install',
-                $composer,
-                $io
-            )
-        );
+        $installer->runInstall();
 
         $this->debug($io, 'Installer finished');
     }

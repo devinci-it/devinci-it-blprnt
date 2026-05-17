@@ -62,9 +62,17 @@ class RoutesListCommand extends Command
         $routeCount = 0;
         foreach ($sortedRoutes as $method => $uris) {
             foreach ($uris as $uri => $route) {
-                $handler = $this->formatHandler($route['action']);
-                $middleware = !empty($route['middleware']) 
-                    ? implode(', ', array_map(fn($m) => $this->getShortClass($m), $route['middleware']))
+                $action = is_object($route) && property_exists($route, 'action')
+                    ? $route->action
+                    : ($route['action'] ?? null);
+
+                $routeMiddleware = is_object($route) && property_exists($route, 'middleware')
+                    ? $route->middleware
+                    : ($route['middleware'] ?? []);
+
+                $handler = $this->formatHandler($action);
+                $middleware = !empty($routeMiddleware)
+                    ? implode(', ', array_map(fn($m) => $this->getShortClass($m), $routeMiddleware))
                     : 'none';
 
                 $row = [$method, $uri, $handler, $middleware];

@@ -1,8 +1,10 @@
 <?php
+
 namespace DevinciIT\Blprnt\Console\Commands;
 
 use DevinciIT\Blprnt\Console\Command;
-use DevinciIT\Blprnt\Composer\Installer;
+use DevinciIT\Blprnt\Core\Installer;
+use DevinciIT\Blprnt\Support\IOHelper;
 
 class PublishAssetsCommand extends Command
 {
@@ -34,13 +36,13 @@ class PublishAssetsCommand extends Command
         $clean = (bool)$this->getOption('clean', false);
         $projectRoot = getcwd();
         $packageRoot = dirname(__DIR__, 3); // src/Console/Commands/../.. = root
-        
+
         // Check if a specific file/directory was specified via arguments (not options)
         $specificPath = $this->parsedArguments[0] ?? null;
 
         if ($specificPath !== null) {
             // Publish specific file or directory
-            $this->publishSpecific($projectRoot, $packageRoot, $specificPath);
+            $this->publishSpecific($projectRoot, $packageRoot, $specificPath, $force);
             return;
         }
 
@@ -52,10 +54,10 @@ class PublishAssetsCommand extends Command
 
         // Publish all assets
         echo $this->log("Publishing framework assets") . "\n";
-        
+
         try {
-            $this->publishAssets($projectRoot, $packageRoot);
-            
+            $this->publishAssets($projectRoot, $packageRoot, $force);
+
             echo "\n" . $this->log("Assets published successfully") . "\n";
         } catch (\Throwable $e) {
             fwrite(STDERR, "Error publishing assets: " . $e->getMessage() . "\n");
@@ -66,10 +68,9 @@ class PublishAssetsCommand extends Command
     /**
      * Publish assets without using the IO interface.
      */
-    private function publishAssets(string $projectRoot, string $packageRoot): void
+    private function publishAssets(string $projectRoot, string $packageRoot, bool $force): void
     {
-        // Call the installer without IO interface (we'll handle output ourselves)
-        Installer::publishForProject($projectRoot, $packageRoot, null);
+        Installer::publishForProject($projectRoot, $packageRoot, null, $force);
     }
 
     /**
@@ -84,7 +85,7 @@ class PublishAssetsCommand extends Command
     /**
      * Publish a specific file or directory.
      */
-    private function publishSpecific(string $projectRoot, string $packageRoot, string $specificPath): void
+    private function publishSpecific(string $projectRoot, string $packageRoot, string $specificPath, bool $force): void
     {
         $packagePath = rtrim($packageRoot, '/') . '/' . ltrim($specificPath, '/');
         $projectPath = rtrim($projectRoot, '/') . '/' . ltrim($specificPath, '/');
@@ -95,21 +96,13 @@ class PublishAssetsCommand extends Command
         }
 
         try {
+            $io = new IOHelper();
+
             if (is_dir($packagePath)) {
-                // Create parent directory if needed
-                $parentDir = dirname($projectPath);
-                if (!is_dir($parentDir)) {
-                    @mkdir($parentDir, 0755, true);
-                }
-                Installer::recurseCopy($packagePath, $projectPath);
+                Installer::recurseCopy($packagePath, $projectPath, $force, $io);
                 echo $this->log("Published {$specificPath} to {$specificPath}") . "\n";
             } else {
-                // Single file
-                $parentDir = dirname($projectPath);
-                if (!is_dir($parentDir)) {
-                    @mkdir($parentDir, 0755, true);
-                }
-                @copy($packagePath, $projectPath);
+                Installer::publishFile($packagePath, $projectPath, $force, $io);
                 echo $this->log("Published {$specificPath} to {$specificPath}") . "\n";
             }
         } catch (\Throwable $e) {
@@ -124,7 +117,7 @@ class PublishAssetsCommand extends Command
     private function cleanPublishedAssets(string $projectRoot): void
     {
         echo $this->log("Cleaning previous assets") . "\n";
-        
+
         $dirsToClean = [
             'bootstrap',
             'routes',
@@ -172,10 +165,10 @@ class PublishAssetsCommand extends Command
         }
 
         $items = array_diff(scandir($path), ['.', '..']);
-        
+
         foreach ($items as $item) {
             $fullPath = $path . '/' . $item;
-            
+
             if (is_dir($fullPath)) {
                 $this->removeDirectory($fullPath);
             } else {

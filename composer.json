@@ -19,13 +19,5 @@
   "license": "MIT",
   "bin": [
     "blprnt"
-  ],
-  "scripts": {
-    "post-install-cmd": [
-      "DevinciIT\\Blprnt\\Composer\\BlprntInstaller::install"
-    ],
-    "post-update-cmd": [
-      "DevinciIT\\Blprnt\\Composer\\BlprntInstaller::install"
-    ]
-  }
+  ]
 }
