@@ -1,0 +1,51 @@
+/*
+   Padding Utility Classes
+
+   Padding utilities have many variations and will be used in many places. This SCSS
+   file provides a shorthand naming convention to help keep class names succinct.
+*/
+
+/* Fluid base size for padding calculations */
+$padding-step: clamp(0.2rem, calc(0.16rem + 0.2vw), 0.5rem);
+
+/* Ratio for padding values */
+$padding-ratio: 1;
+
+/* Generate padding utility classes */
+/*
+   This mixin generates padding utility classes according to the provided shorthand naming
+   convention. It creates classes for padding, top, right, bottom, left, horizontal, and
+   vertical padding with various values.
+*/
+@mixin generate-padding-utilities {
+    $padding-multiplier: 0;
+    @for $i from 0 through 12 {
+        .p#{$i} {
+            padding: calc(#{$padding-step} * #{$padding-multiplier});
+        }
+        .pt#{$i} {
+            padding-top: calc(#{$padding-step} * #{$padding-multiplier});
+        }
+        .pr#{$i} {
+            padding-right: calc(#{$padding-step} * #{$padding-multiplier});
+        }
+        .pb#{$i} {
+            padding-bottom: calc(#{$padding-step} * #{$padding-multiplier});
+        }
+        .pl#{$i} {
+            padding-left: calc(#{$padding-step} * #{$padding-multiplier});
+        }
+        .px#{$i} {
+            padding-left: calc(#{$padding-step} * #{$padding-multiplier});
+            padding-right: calc(#{$padding-step} * #{$padding-multiplier});
+        }
+        .py#{$i} {
+            padding-top: calc(#{$padding-step} * #{$padding-multiplier});
+            padding-bottom: calc(#{$padding-step} * #{$padding-multiplier});
+        }
+        $padding-multiplier: $padding-multiplier + $padding-ratio;
+    }
+}
+
+// Include the mixin to generate padding utility classes
+@include generate-padding-utilities;

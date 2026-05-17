@@ -1,0 +1,13 @@
+<?php
+namespace {{ namespace }};
+
+class {{ class }}
+{
+    public function handle(array $payload = []): array
+    {
+        return [
+            'status' => 'ok',
+            'data' => $payload,
+        ];
+    }
+}

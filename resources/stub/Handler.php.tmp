@@ -1,0 +1,15 @@
+<?php
+namespace {{ namespace }};
+
+use DevinciIT\Blprnt\Console\Command;
+use DevinciIT\Blprnt\Console\CommandHandler;
+
+class {{ class }} implements CommandHandler
+{
+    public function handle(array $args, Command $command)
+    {
+        echo '{{ output }}' . PHP_EOL;
+
+        return null;
+    }
+}

@@ -1,0 +1,21 @@
+#!/usr/bin/env php
+<?php
+
+declare(strict_types=1);
+
+$bootstrapFile = __DIR__ . '/bootstrap/cli.php';
+
+if (!is_file($bootstrapFile)) {
+	$bootstrapFile = __DIR__ . '/resources/skel/bootstrap/cli.php';
+}
+
+if (!is_file($bootstrapFile)) {
+	fwrite(STDERR, "Unable to locate a Blprnt CLI bootstrap file.\n");
+	exit(1);
+}
+
+$bootstrap = require $bootstrapFile;
+
+$kernel = $bootstrap->kernel;
+
+$kernel->handle($argv);

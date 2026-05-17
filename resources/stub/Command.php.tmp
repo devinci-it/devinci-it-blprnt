@@ -1,0 +1,16 @@
+<?php
+namespace {{ namespace }};
+
+use DevinciIT\Blprnt\Console\Command;
+
+class {{ class }} extends Command
+{
+    protected string $signature = '{{ signature }}';
+    protected string $description = '{{ description }}';
+    protected ?string $handlerClass = {{ handler_class }};
+
+    public function handle(array $args = [])
+    {
+        echo "{{ output }}\\n";
+    }
+}

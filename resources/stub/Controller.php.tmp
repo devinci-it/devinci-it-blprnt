@@ -1,0 +1,15 @@
+<?php
+namespace {{ namespace }};
+
+use DevinciIT\Blprnt\Core\Controller;
+
+class {{ class }} extends Controller
+{
+    public function index()
+    {
+        // TODO: Use Services to handle business logic
+        return view('{{ view }}', [
+            'title' => '{{ title }}'
+        ]);
+    }
+}

@@ -1,0 +1,51 @@
+/*
+   Margin Utility Classes
+
+   Margin utilities have many variations and will be used in many places. This SCSS
+   file provides a shorthand naming convention to help keep class names succinct.
+*/
+
+/* Fluid base size for margin calculations */
+$space-step: clamp(0.2rem, calc(0.16rem + 0.2vw), 0.5rem);
+
+/* Ratio for margin values */
+$ratio: 1;
+
+/* Generate margin utility classes */
+/*
+   This mixin generates margin utility classes according to the provided shorthand naming
+   convention. It creates classes for margin, top, right, bottom, left, horizontal, and
+   vertical margins with various values.
+*/
+@mixin generate-margin-utilities {
+    $multiplier: 0;
+    @for $i from 0 through 12 {
+        .m#{$i} {
+            margin: calc(#{$space-step} * #{$multiplier});
+        }
+        .t#{$i} {
+            margin-top: calc(#{$space-step} * #{$multiplier});
+        }
+        .r#{$i} {
+            margin-right: calc(#{$space-step} * #{$multiplier});
+        }
+        .b#{$i} {
+            margin-bottom: calc(#{$space-step} * #{$multiplier});
+        }
+        .l#{$i} {
+            margin-left: calc(#{$space-step} * #{$multiplier});
+        }
+        .x#{$i} {
+            margin-left: calc(#{$space-step} * #{$multiplier});
+            margin-right: calc(#{$space-step} * #{$multiplier});
+        }
+        .y#{$i} {
+            margin-top: calc(#{$space-step} * #{$multiplier});
+            margin-bottom: calc(#{$space-step} * #{$multiplier});
+        }
+        $multiplier: $multiplier + $ratio;
+    }
+}
+
+// Include the mixin to generate margin utility classes
+@include generate-margin-utilities;
