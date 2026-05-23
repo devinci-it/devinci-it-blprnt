@@ -1,13 +1,17 @@
+.DS_Store
+/vendor/
+/node_modules/
+/public/assets/
+/.idea/
+/.vscode/
+.env
+*.log
+# Allow this .gitignore to be tracked
+!.gitignore
 vendor
 **/vendor/*
 
 .env
-.app/
-app
-.bootstrap/
-bootstrap
-./public/
-public
 storage/
 logs/
 data/
@@ -21,3 +25,13 @@ docs/wiki/Architecture/ServiceContainer.md
 docs/examples/ServiceContainerExample.php
 docs/**
 config/assets.example.php
+!app/.gitkeep
+!bootstrap/.gitkeep
+!public/.gitkeep
+!routes/.gitkeep
+!storage/.gitkeep
+!cache/.gitkeep
+!logs/.gitkeep
+!tmp/.gitkeep
+!uploads/.gitkeep
+
