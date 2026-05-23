@@ -2,6 +2,7 @@
 
 $exception = $GLOBALS['blprnt_error'] ?? null;
 $stackTrace = $GLOBALS['blprnt_stack_trace'] ?? '';
+$debugContext = $GLOBALS['blprnt_debug_context'] ?? [];
 
 $isThrowable = $exception instanceof \Throwable;
 
@@ -11,15 +12,25 @@ $line = $isThrowable ? $exception->getLine() : null;
 $type = $isThrowable ? get_class($exception) : 'Exception';
 
 /** Escape helper */
-function e($value): string {
-	return htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8');
+if (!function_exists('e')) {
+	function e($value): string
+	{
+		return htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8');
+	}
 }
 
 $fileLine = $file && $line ? "{$file}:{$line}" : null;
+$requestMethod = (string)($debugContext['request_method'] ?? ($_SERVER['REQUEST_METHOD'] ?? 'GET'));
+$requestUri = (string)($debugContext['request_uri'] ?? ($_SERVER['REQUEST_URI'] ?? '/'));
+$routeDirectory = (string)($debugContext['route_directory'] ?? '');
+$routeFiles = is_array($debugContext['route_files'] ?? null) ? $debugContext['route_files'] : [];
+$sourceRoot = (string)($debugContext['source_root'] ?? 'src');
+$sourceRootEnabled = (bool)($debugContext['source_root_enabled'] ?? false);
 
 ?>
 <!doctype html>
 <html lang="en">
+
 <head>
 	<meta charset="utf-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1">
@@ -39,7 +50,9 @@ $fileLine = $file && $line ? "{$file}:{$line}" : null;
 			--code-bg: #0a1322;
 		}
 
-		* { box-sizing: border-box; }
+		* {
+			box-sizing: border-box;
+		}
 
 		body {
 			margin: 0;
@@ -56,7 +69,7 @@ $fileLine = $file && $line ? "{$file}:{$line}" : null;
 		}
 
 		.card {
-			background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+			background: linear-gradient(180deg, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0.01));
 			border: 1px solid var(--panel-border);
 			border-radius: 14px;
 			overflow: hidden;
@@ -143,56 +156,140 @@ $fileLine = $file && $line ? "{$file}:{$line}" : null;
 			font-size: 0.83rem;
 			white-space: pre-wrap;
 		}
+
+		.panel {
+			margin-top: 1rem;
+			border: 1px solid #1f2c44;
+			border-radius: 10px;
+			overflow: hidden;
+		}
+
+		.panel h2 {
+			margin: 0;
+			padding: 0.75rem 1rem;
+			font-size: 0.95rem;
+			border-bottom: 1px solid #1f2c44;
+			background: #0d1728;
+		}
+
+		.panel-body {
+			padding: 0.85rem 1rem;
+		}
+
+		table {
+			width: 100%;
+			border-collapse: collapse;
+			font-family: ui-monospace, monospace;
+			font-size: 0.82rem;
+		}
+
+		th,
+		td {
+			text-align: left;
+			padding: 0.45rem 0.4rem;
+			border-bottom: 1px solid #1f2c44;
+			word-break: break-word;
+		}
+
+		th {
+			color: var(--muted);
+			font-weight: 600;
+		}
+
+		.small-muted {
+			margin-top: 0.5rem;
+			color: var(--muted);
+			font-size: 0.78rem;
+		}
 	</style>
 </head>
+
 <body>
 
-<main class="wrap">
-	<section class="card">
-					<img src="/logo.svg" alt="Blprnt Logo" style="height: 64px; filter: invert(1) grayscale(1) brightness(150%);">
+	<main class="wrap">
+		<section class="card">
+			<img src="/logo.svg" alt="Blprnt Logo" style="height: 64px; filter: invert(1) grayscale(1) brightness(150%);">
 
-		<header class="head">
-			<span class="label">Local Debug</span>
-			<h1>Unhandled Exception</h1>
+			<header class="head">
+				<span class="label">Local Debug</span>
+				<h1>Unhandled Exception</h1>
 
-			<?php if ($fileLine): ?>
-				<div class="meta copyable" data-copy="<?= e($fileLine) ?>">
-					<?= e($fileLine) ?>
+				<?php if ($fileLine): ?>
+					<div class="meta copyable" data-copy="<?= e($fileLine) ?>">
+						<?= e($fileLine) ?>
+					</div>
+				<?php endif; ?>
+			</header>
+
+			<div class="body">
+				<div class="type"><?= e($type) ?></div>
+				<p class="message"><?= e($message) ?></p>
+
+				<div class="panel">
+					<h2>Request and Route Diagnostics</h2>
+					<div class="panel-body">
+						<table>
+							<tr>
+								<th>Request</th>
+								<td><?= e($requestMethod . ' ' . $requestUri) ?></td>
+							</tr>
+							<tr>
+								<th>Route Directory</th>
+								<td><?= e($routeDirectory !== '' ? $routeDirectory : '(not resolved)') ?></td>
+							</tr>
+							<tr>
+								<th>Source Root Mode</th>
+								<td><?= e($sourceRootEnabled ? 'enabled (' . $sourceRoot . ')' : 'disabled') ?></td>
+							</tr>
+						</table>
+
+						<?php if (!empty($routeFiles)): ?>
+							<table>
+								<tr>
+									<th>Resolved Route Files</th>
+									<th>Status</th>
+								</tr>
+								<?php foreach ($routeFiles as $routeFile): ?>
+									<tr>
+										<td><?= e((string)$routeFile) ?></td>
+										<td><?= e(is_file((string)$routeFile) ? 'found' : 'missing') ?></td>
+									</tr>
+								<?php endforeach; ?>
+							</table>
+						<?php endif; ?>
+
+						<div class="small-muted">If this is a RouteNotFoundException, compare the request URI to the resolved route files above.</div>
+					</div>
 				</div>
-			<?php endif; ?>
-		</header>
 
-		<div class="body">
-			<div class="type"><?= e($type) ?></div>
-			<p class="message"><?= e($message) ?></p>
+				<?php if ($stackTrace): ?>
+					<pre><?= e($stackTrace) ?></pre>
+				<?php endif; ?>
+			</div>
+		</section>
+	</main>
 
-			<?php if ($stackTrace): ?>
-				<pre><?= e($stackTrace) ?></pre>
-			<?php endif; ?>
-		</div>
-	</section>
-</main>
+	<script>
+		document.querySelectorAll('.copyable').forEach(el => {
+			el.addEventListener('click', async () => {
+				const text = el.dataset.copy;
 
-<script>
-document.querySelectorAll('.copyable').forEach(el => {
-	el.addEventListener('click', async () => {
-		const text = el.dataset.copy;
+				try {
+					await navigator.clipboard.writeText(text);
 
-		try {
-			await navigator.clipboard.writeText(text);
+					const original = el.textContent;
+					el.textContent = "Copied!";
 
-			const original = el.textContent;
-			el.textContent = "Copied!";
-			
-			setTimeout(() => {
-				el.textContent = original;
-			}, 1200);
-		} catch (e) {
-			console.error('Copy failed', e);
-		}
-	});
-});
-</script>
+					setTimeout(() => {
+						el.textContent = original;
+					}, 1200);
+				} catch (e) {
+					console.error('Copy failed', e);
+				}
+			});
+		});
+	</script>
 
 </body>
+
 </html>

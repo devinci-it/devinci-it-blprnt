@@ -1,4 +1,5 @@
 <?php
+
 namespace DevinciIT\Blprnt\Core;
 
 use Throwable;
@@ -39,6 +40,22 @@ class ErrorHandler
         $GLOBALS['blprnt_error'] = $throwable;
         $GLOBALS['blprnt_stack_trace'] = $throwable->getTraceAsString();
         $GLOBALS['blprnt_stack_trace_array'] = $throwable->getTrace();
+
+        if (!isset($GLOBALS['blprnt_debug_context']) || !is_array($GLOBALS['blprnt_debug_context'])) {
+            $GLOBALS['blprnt_debug_context'] = [];
+        }
+
+        $GLOBALS['blprnt_debug_context']['request_method'] = $_SERVER['REQUEST_METHOD'] ?? 'GET';
+        $GLOBALS['blprnt_debug_context']['request_uri'] = $_SERVER['REQUEST_URI'] ?? '/';
+    }
+
+    public static function setContext(string $key, mixed $value): void
+    {
+        if (!isset($GLOBALS['blprnt_debug_context']) || !is_array($GLOBALS['blprnt_debug_context'])) {
+            $GLOBALS['blprnt_debug_context'] = [];
+        }
+
+        $GLOBALS['blprnt_debug_context'][$key] = $value;
     }
 
     public static function isLocalDevelopment(): bool
@@ -51,10 +68,19 @@ class ErrorHandler
     public static function renderLocalError(): void
     {
         $debugViewPath = self::resolveDebugViewPath();
-        
+
         if ($debugViewPath !== null) {
-            View::render('errors/debug', [], [], []);
-            // require $debugViewPath;
+            $statusCode = 500;
+            $throwable = $GLOBALS['blprnt_error'] ?? null;
+            if ($throwable instanceof Throwable) {
+                $code = (int) $throwable->getCode();
+                if ($code >= 400 && $code <= 599) {
+                    $statusCode = $code;
+                }
+            }
+
+            http_response_code($statusCode);
+            require $debugViewPath;
             return;
         }
 
@@ -133,6 +159,9 @@ class ErrorHandler
     {
         $paths = [
             __DIR__ . '/../../app/Views/errors/debug.php',
+            __DIR__ . '/../../app/Views/debug.php',
+            __DIR__ . '/../../resources/skel/app/Views/errors/debug.php',
+            __DIR__ . '/../../resources/skel/views/debug.php',
             __DIR__ . '/../../vendor/devinci-it/blprnt/resources/views/debug.php',
         ];
 
@@ -142,7 +171,7 @@ class ErrorHandler
             }
         }
 
-        return true;
+        return null;
     }
 
     public static function getHttpStatusText(int $statusCode): string

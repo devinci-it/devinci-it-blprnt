@@ -3,6 +3,7 @@
 namespace DevinciIT\Blprnt\Core;
 
 use DevinciIT\Blprnt\Core\Route;
+use DevinciIT\Blprnt\Core\Exceptions\RouteNotFoundException;
 
 class Router
 {
@@ -162,7 +163,13 @@ class Router
         }
 
         if (!$route) {
-            throw new \RuntimeException("Route not found: {$method} {$uri}", 404);
+            ErrorHandler::setContext('route_lookup', [
+                'method' => strtoupper($method),
+                'uri' => $uri,
+                'registered_methods' => array_keys($this->routes),
+            ]);
+
+            throw new RouteNotFoundException($method, $uri, array_keys($this->routes));
         }
 
         /*

@@ -2,7 +2,7 @@
 
 ![blprnt-logo](resources/logo-l.svg)
 
-Blprnt is a minimal, extensible PHP micro-framework 
+Blprnt is a minimal, extensible PHP micro-framework
 
 ## Philosophy
 
@@ -107,6 +107,37 @@ resources/
 routes/
 src/
 ```
+
+## Framework Dev Workflow (Source Root + Sync)
+
+If you are developing Blprnt itself, you can keep editable scaffold files under `src/` (or another source root) and let HTTP bootstrap prefer those paths.
+
+Set in `.env`:
+
+```dotenv
+BLPRNT_DEV_SOURCE=true
+BLPRNT_DEV_ROOT=src
+SERVE_WEBROOT=src/public
+```
+
+When enabled, bootstrap will look for these files in `src/` first (if they exist), then fall back to project root:
+
+- `app/Views`
+- `bootstrap/helpers.php`
+- `routes/web.php`
+- `routes/api.php`
+
+To sync your development tree back to package skeleton before release:
+
+```bash
+php blprnt dev:sync-skel --source-root=src --force
+```
+
+Useful variants:
+
+- Sync only one subtree: `php blprnt dev:sync-skel app/Views --source-root=src --force`
+- Replace skeleton target first: `php blprnt dev:sync-skel public --source-root=src --clean`
+- Remove source after sync: `php blprnt dev:sync-skel routes --source-root=src --prune-source`
 
 ## PHP File Documentation
 

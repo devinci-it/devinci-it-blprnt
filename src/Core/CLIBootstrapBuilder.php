@@ -61,7 +61,7 @@ class CLIBootstrapBuilder
 
         // Project commands
         $this->registerPath(
-            getcwd() . '/app/Console/Commands',
+            getcwd() . '/src/Console/Commands',
             'App\\Console\\Commands'
         );
 
