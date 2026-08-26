@@ -63,6 +63,12 @@ abstract class Installer
             $force,
             $output
         );
+        self::recurseCopy(
+            $installer->resolvePackage($installer->normalizePackagePath('resources/skel/database')),
+            $installer->resolveProject($installer->normalizeProjectPath('database')),
+            $force,
+            $output
+        );
 
         self::publishFile(
             $installer->resolvePackage($installer->normalizePackagePath('resources/skel/.env.tmp')),

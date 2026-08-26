@@ -24,6 +24,7 @@ class BlprntInstaller extends Installer
         $this->dir('resources/skel/bootstrap', 'bootstrap');
         $this->dir('resources/skel/routes', 'routes');
         $this->dir('resources/skel/config', 'config');
+        $this->dir('resources/skel/database', 'database');
 
         $this->io()->success('Core structure published.');
 
