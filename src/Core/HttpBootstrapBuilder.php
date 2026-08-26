@@ -175,7 +175,7 @@ class HttpBootstrapBuilder
     public function run(?Request $request = null): void
     {
         $result = $this->build();
-        echo $result->kernel->handle($request ?? new Request());
+        Response::emit($result->kernel->handle($request ?? new Request()));
     }
 
     /* ------------------------------------------------------------------

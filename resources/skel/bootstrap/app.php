@@ -23,6 +23,7 @@ require __DIR__ . '/../vendor/autoload.php';
 use DevinciIT\Blprnt\Core\App;
 use DevinciIT\Blprnt\Core\HttpBootstrap;
 use DevinciIT\Blprnt\Core\Request;
+use DevinciIT\Blprnt\Core\Response;
 use DevinciIT\Blprnt\Core\Router;
 use DevinciIT\Blprnt\Http\Kernel;
 use DevinciIT\Blprnt\Support\Session;
@@ -97,4 +98,10 @@ $kernel = $bootstrap->kernel;
 |--------------------------------------------------------------------------
 */
 
-echo $kernel->handle(new Request());
+// Response::emit() sends a Response instance (e.g. Response::json() from a
+// controller) via its own send(), or echoes anything else (a plain array,
+// string, or the null a view()-based action returns) exactly as before.
+// A bare `echo $kernel->handle(...)` here would silently drop any
+// Response object returned from a controller -- see
+// docs/wiki/Core/Request-Response.wiki.md.
+Response::emit($kernel->handle(new Request()));

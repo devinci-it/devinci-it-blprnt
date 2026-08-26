@@ -28,9 +28,11 @@ class HttpBootstrap
      */
     public static function run(string $basePath, ?Request $request = null): void
     {
-        echo self::builder($basePath)
+        $result = self::builder($basePath)
             ->build()
             ->kernel
             ->handle($request ?? new Request());
+
+        Response::emit($result);
     }
 }

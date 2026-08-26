@@ -4,6 +4,7 @@ namespace DevinciIT\Blprnt\Http;
 use DevinciIT\Blprnt\Core\Router;
 use DevinciIT\Blprnt\Core\Request;
 use DevinciIT\Blprnt\Core\ErrorHandler;
+use DevinciIT\Blprnt\Core\Response;
 
 class Kernel
 {
@@ -68,17 +69,25 @@ class Kernel
      * - application/json Accept header
      * - application/json Content-Type
      *
-     * Responses are wrapped in JSON envelope with success/data structure.
+     * Responses are wrapped in JSON envelope with success/data structure —
+     * unless a controller/middleware already returned a fully-formed
+     * Response (e.g. via Response::json()), in which case it's passed
+     * through untouched: it's already complete, wrapping it again would
+     * double-encode it.
      */
     protected function handleApi(Request $request)
     {
-        header('Content-Type: application/json');
-
         $response = $this->router->dispatch(
             $request->uri(),
             $request->method(),
             $request
         );
+
+        if ($response instanceof Response) {
+            return $response;
+        }
+
+        header('Content-Type: application/json');
 
         // Wrap response in API envelope
         if (is_array($response) || is_object($response)) {
