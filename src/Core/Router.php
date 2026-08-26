@@ -209,29 +209,8 @@ class Router
             $route->middleware ?? []
         );
 
-        $middlewareStack = array_reverse($middlewareStack);
-
-        $pipeline = array_reduce(
-            $middlewareStack,
-            function ($next, $middleware) {
-
-                return function ($request) use ($next, $middleware) {
-
-                    $instance = is_string($middleware)
-                        ? new $middleware()
-                        : $middleware;
-
-                    if (!method_exists($instance, 'handle')) {
-                        throw new \RuntimeException(
-                            "Invalid middleware: " . get_class($instance)
-                        );
-                    }
-
-                    return $instance->handle($request, $next);
-                };
-            },
-            $controllerExecutor
-        );
+        $pipeline = (new MiddlewarePipeline($middlewareStack))
+            ->then($controllerExecutor);
 
         /*
         |--------------------------------------------------------------------------

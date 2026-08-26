@@ -1,328 +1,140 @@
-# 🧭 Router Class Documentation
+# Router
 
-## 📦 Overview
+`DevinciIT\Blprnt\Core\Router` matches an incoming URI + HTTP method to a
+handler, runs middleware around it, and executes it. One router instance per
+application, bound into the container as `router` and loaded with the routes
+files during bootstrap (see
+[Bootstrap & Request Lifecycle](Bootstrap-Lifecycle.wiki.md)).
 
-The `Router` class is responsible for managing application routes and dispatching HTTP requests to the appropriate handlers.
+> This page replaces an earlier version that documented a `dispatch()`
+> implementation the code no longer has (plain `\Exception`, no-arg
+> middleware). Everything below is checked against `src/Core/Router.php` as it
+> exists today.
 
-It supports:
-
-* HTTP method-based routing (GET, POST, PUT, PATCH, DELETE)
-* Closure and controller-based actions
-* Middleware execution
-* Route grouping with shared middleware
-
----
-
-## 🏗️ Class: `Router`
-
-### Purpose
-
-Provides a simple routing system that maps HTTP requests to handlers while supporting middleware and grouping.
-
----
-
-## 🔐 Properties
-
-### `$routes`
+## Registering routes
 
 ```php
-protected $routes = [];
+$router->get('/posts', [PostController::class, 'index']);
+$router->post('/posts', [PostController::class, 'store']);
+$router->put('/posts/{id}', [PostController::class, 'update']);
+$router->patch('/posts/{id}', [PostController::class, 'patch']);
+$router->delete('/posts/{id}', [PostController::class, 'destroy']);
 ```
 
-* Stores all registered routes
-* Organized by:
-
-  ```
-  [HTTP_METHOD][URI] => [action, middleware]
-  ```
-
----
-
-### `$groupMiddleware`
+Each of `get`/`post`/`put`/`patch`/`delete` is a thin wrapper over
+`addRoute($method, $uri, $action, $middleware)` and returns the `Route` object,
+so you can chain `->middleware([...])` on an individual route:
 
 ```php
-protected $groupMiddleware = [];
+$router->get('/admin', [AdminController::class, 'index'])
+    ->middleware([AuthGuard::class]);
 ```
 
-* Stores middleware applied to a route group
-* Automatically merged into routes defined within a group
+An action is either:
 
----
+- a **closure**: `function ($request) { ... }`
+- a **`[Controller::class, 'method']`** pair — the controller is instantiated
+  fresh (`new $controller()`) for every request, no constructor arguments are
+  passed
 
-## ⚙️ Methods
+## Route parameters
 
----
-
-### 🔹 `group(array $opts, callable $callback): void`
-
-#### Description
-
-Creates a route group with shared middleware.
-
-#### Parameters
-
-* `array $opts`
-  Group configuration options
-
-  * `middleware` (array) → middleware applied to all routes in the group
-
-* `callable $callback`
-  Function that receives the router instance and defines routes
-
-#### Example
+`{name}` segments become named capture groups (`[^/]+` — matches anything but
+a `/`) and are passed to the handler **positionally, after `$request`**, in
+the order they appear in the URI:
 
 ```php
-$router->group(['middleware' => [AuthMiddleware::class]], function ($router) {
-    $router->get('/dashboard', [DashboardController::class, 'index']);
+$router->get('/posts/{id}', [PostController::class, 'show']);
+
+// PostController
+public function show($request, $id) { ... }
+```
+
+```php
+$router->get('/posts/{id}/comments/{commentId}', [PostController::class, 'comment']);
+
+public function comment($request, $id, $commentId) { ... }
+```
+
+There's no type coercion or constraint syntax (no `{id:int}`) — every param
+arrives as a string.
+
+## Groups
+
+```php
+$router->group(['prefix' => '/admin', 'middleware' => [AuthGuard::class]], function ($router) {
+    $router->get('/', [AdminController::class, 'index']);       // -> /admin
+    $router->get('/settings', [AdminController::class, 'settings']); // -> /admin/settings
 });
 ```
 
----
+`group()` saves the current prefix/middleware, applies the new ones for the
+duration of the callback, then restores what was there before — so groups
+nest cleanly. Middleware from an outer group, an inner group, and the route
+itself are all merged (in that order) before dispatch.
 
-### 🔹 `addRoute(string $method, string $uri, callable|array $action, array $middleware = []): void`
-
-#### Description
-
-Registers a route internally.
-
-#### Parameters
-
-* `string $method`
-  HTTP method (GET, POST, PUT, PATCH, DELETE)
-
-* `string $uri`
-  Route URI path
-
-* `callable|array $action`
-  Route handler:
-
-  * Closure (`function () {}`)
-  * Controller action (`[ControllerClass::class, 'method']`)
-
-* `array $middleware` *(optional)*
-  Middleware specific to this route
-
-#### Behavior
-
-* Merges group middleware with route middleware
-* Stores route definition in `$routes`
-
----
-
-## 🌐 HTTP Method Helpers
-
-These methods are convenience wrappers around `addRoute()`.
-
----
-
-### 🔹 `get(string $uri, callable|array $action, array $middleware = []): void`
-
-Registers a **GET** route.
-
----
-
-### 🔹 `post(string $uri, callable|array $action, array $middleware = []): void`
-
-Registers a **POST** route.
-
----
-
-### 🔹 `put(string $uri, callable|array $action, array $middleware = []): void`
-
-Registers a **PUT** route (full resource update).
-
----
-
-### 🔹 `patch(string $uri, callable|array $action, array $middleware = []): void`
-
-Registers a **PATCH** route (partial update).
-
----
-
-### 🔹 `delete(string $uri, callable|array $action, array $middleware = []): void`
-
-Registers a **DELETE** route.
-
----
-
-## 🧠 Internal Methods
-
----
-
-### 🔹 `isClosure(mixed $action): bool`
-
-#### Description
-
-Determines whether the provided action is callable.
-
-#### Returns
-
-* `true` → closure or callable
-* `false` → assumed controller action
-
----
-
-## 🚀 Request Handling
-
----
-
-### 🔹 `dispatch(string $uri, string $method): mixed`
-
-#### Description
-
-Resolves and executes the route for a given request.
-
----
-
-### 🔄 Execution Flow
-
-1. **Find route**
-
-   ```php
-   $route = $this->routes[$method][$uri] ?? null;
-   ```
-
-2. **Throw exception if not found**
-
-   ```php
-   throw new \Exception("Route not found");
-   ```
-
-3. **Execute middleware**
-
-   ```php
-   foreach ($route['middleware'] as $mw) {
-       (new $mw)->handle();
-   }
-   ```
-
-4. **Execute handler**
-
-   * If closure:
-
-     ```php
-     return call_user_func($route['action']);
-     ```
-   * If controller:
-
-     ```php
-     [$controller, $method] = $route['action'];
-     return (new $controller)->$method();
-     ```
-
----
-
-## 🧩 Route Action Types
-
-### 1. Closure-based
+## Global middleware
 
 ```php
-$router->get('/hello', function () {
-    return "Hello World";
-});
+$router->middleware([SomeMiddleware::class]);
 ```
 
----
+Runs before every route's own middleware, on every route, regardless of
+group. There's no way to exempt a specific route from it.
 
-### 2. Controller-based
+## Dispatch
 
 ```php
-$router->get('/users', [UserController::class, 'index']);
+$router->dispatch($uri, $method, $request);
 ```
 
----
+This is what `Http\Kernel` calls per-request. In order:
 
-## 🛡️ Middleware
+1. **Match.** Exact `[method][uri]` lookup first; if that misses, every
+   registered pattern for that method is tried as a regex
+   (`{name}` → `(?P<name>[^/]+)`) until one matches.
+2. **Not found.** If nothing matches, throws
+   `Core\Exceptions\RouteNotFoundException` — carries the requested
+   method/URI *and* the list of methods that do have routes registered, so the
+   resulting error page/message tells you what's actually reachable instead of
+   just "404."
+3. **Build the controller executor** — a closure that calls the closure or
+   controller action with `$request` plus the matched params.
+4. **Build the middleware stack** — global middleware + group middleware +
+   route middleware, merged in that order — and wrap the controller executor
+   in a [`MiddlewarePipeline`](Middleware.wiki.md).
+5. **Run the pipeline** with `$request`, return whatever it returns.
 
-### Description
+## Gotchas
 
-Middleware are executed **before** the route handler.
+- **No 405.** A `POST` to a URI that only has a `GET` route registered
+  produces the same `RouteNotFoundException` as a URI that doesn't exist at
+  all. If you need to tell "wrong method" apart from "no such route," you
+  currently have to inspect `getRegisteredMethods()` on the caught exception
+  yourself.
+- **`load(null)` uses `findProjectRoot()`**, which walks up from `__DIR__`
+  looking for a `vendor` directory. Every real bootstrap path
+  (`HttpBootstrapBuilder`, `CLIBootstrapBuilder`) calls `load()` with an
+  explicit path, so this fallback is not exercised in normal use — don't rely
+  on it, and don't assume it resolves correctly inside `test/sandbox` or any
+  other nested-`vendor` layout.
+- **Route matching is exact-string-then-regex, not radix/trie-based** — fine
+  at the route counts a micro-framework app is likely to have, but every
+  unmatched exact lookup falls through to a full linear scan of that method's
+  patterns.
 
-### Requirements
+## `Route`
 
-* Must be a class
-* Must implement:
+The value object each registration produces (`src/Core/Route.php`):
 
 ```php
-public function handle()
-```
-
----
-
-### Example
-
-```php
-class AuthMiddleware {
-    public function handle() {
-        // authentication logic
-    }
+class Route {
+    public string $method;
+    public string $uri;
+    public $action;              // closure or [Controller::class, 'method']
+    public array $middleware = [];
 }
 ```
 
----
-
-### Usage
-
-```php
-$router->get('/dashboard', [DashboardController::class, 'index'], [
-    AuthMiddleware::class
-]);
-```
-
----
-
-## 🧱 Route Groups with Middleware
-
-```php
-$router->group(['middleware' => [AuthMiddleware::class]], function ($router) {
-    $router->get('/profile', [UserController::class, 'profile']);
-});
-```
-
----
-
-## ⚠️ Error Handling
-
-* Throws `\Exception` if route is not found:
-
-```php
-throw new \Exception("Route not found");
-```
-
----
-
-## 🧠 Design Notes
-
-* Middleware is executed in order
-* Supports both functional and OOP handlers
-* Keeps routing logic simple and extensible
-* Uses method-based routing structure for clarity
-
----
-
-## 🚀 Example Usage
-
-```php
-$router = new Router();
-
-$router->get('/', function () {
-    return "Home";
-});
-
-$router->post('/login', [AuthController::class, 'login']);
-
-echo $router->dispatch('/', 'GET');
-```
-
----
-
-## 📌 Summary
-
-The `Router` class provides:
-
-* Clean HTTP method routing
-* Flexible handler support
-* Middleware integration
-* Group-based route organization
-
-It serves as a lightweight foundation for building custom PHP frameworks or APIs.
+`$route->middleware([...])` appends more middleware and returns `$this`, used
+internally for the fluent `->middleware()` chaining shown above.

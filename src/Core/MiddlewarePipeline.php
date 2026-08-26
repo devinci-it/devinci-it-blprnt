@@ -18,6 +18,13 @@ class MiddlewarePipeline
             function ($next, $middleware) {
                 return function ($request) use ($middleware, $next) {
                     $instance = is_string($middleware) ? new $middleware : $middleware;
+
+                    if (!method_exists($instance, 'handle')) {
+                        throw new \RuntimeException(
+                            "Invalid middleware: " . get_class($instance)
+                        );
+                    }
+
                     return $instance->handle($request, $next);
                 };
             },
